@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORBITA v3.0 - AR Satellite Command</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #02060d;
+            color: #00f0ff;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        /* Live AR Camera Background */
+        #bg-camera {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 0;
+            filter: brightness(0.40) contrast(1.15) saturate(0.65);
+        }
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+        .panel {
+            position: absolute;
+            z-index: 10;
+            background: rgba(2, 16, 28, 0.72);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            backdrop-filter: blur(5px);
+            padding: 14px 18px;
+            box-shadow: 0 0 18px rgba(0, 240, 255, 0.15);
+            pointer-events: none;
+        }
+        #top-left { top: 20px; left: 20px; border-left: 4px solid #00f0ff; }
+        #top-left h1 { font-size: 22px; margin: 0; letter-spacing: 3px; text-shadow: 0 0 10px #00f0ff; }
+        #top-left p { margin: 4px 0 0; font-size: 12px; color: #8be9fd; }
+
+        #right-panel { top: 20px; right: 20px; width: 300px; border-right: 4px solid #00f0ff; }
+        #right-panel h2 { font-size: 14px; margin: 0 0 10px; border-bottom: 1px solid rgba(0,240,255,0.3); padding-bottom: 5px; letter-spacing: 2px; }
+        .sat-item {
+            padding: 7px 10px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .sat-item.active {
+            background: rgba(0, 240, 255, 0.22);
+            border-color: #00f0ff;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+        }
+        .telemetry { margin-top: 12px; font-size: 12px; line-height: 1.65; color: #ccf7ff; }
+        .telemetry span { color: #00ff88; font-weight: bold; }
+
+        #bottom-left { bottom: 20px; left: 20px; min-width: 310px; }
+        #bottom-left p { margin: 4px 0; font-size: 12px; }
+        #cmd-status { color: #00ff88; font-weight: bold; font-size: 14px; }
+
+        #bottom-right { bottom: 20px; right: 20px; font-size: 11px; color: #8fd8e6; line-height: 1.55; }
+        #bottom-right b { color: #00f0ff; }
+    </style>
+</head>
+<body>
+    <!-- Live Camera Feed in Background -->
+    <img id="bg-camera" src="/video_feed" alt="AR Vision Feed">
+
+    <div id="top-left" class="panel">
+        <h1>PROJECT ORBITA</h1>
+        <p>AR SATELLITE OSINT // INDIA SECTOR</p>
+        <p id="clock">UTC: --:--:--</p>
+    </div>
+
+    <div id="right-panel" class="panel">
+        <h2>TRACKED SATELLITES (34 ACTIVE)</h2>
+        <div id="sat-ISS" class="sat-item active"><span>[1] ISS (LIVE API)</span><span style="color:#00ff88;">LIVE</span></div>
+        <div id="sat-NAVIC" class="sat-item"><span>[2] NAVIC-1G (ISRO)</span><span style="color:#ffaa00;">INDIA</span></div>
+        <div id="sat-CARTOSAT" class="sat-item"><span>[3] CARTOSAT-3</span><span style="color:#ff00ff;">LEO</span></div>
+        <div id="sat-INSAT" class="sat-item"><span>[4] INSAT-3D</span><span style="color:#ffffff;">GEO</span></div>
+
+        <div class="telemetry">
+            <div>TARGET: <span id="t-name">ISS (ZARYA)</span></div>
+            <div>ALTITUDE: <span id="t-alt">420 KM</span></div>
+            <div>VELOCITY: <span id="t-vel">7.66 KM/S</span></div>
+            <div>COORDS: <span id="t-coords">FETCHING...</span></div>
+            <div>STATUS: <span id="t-status">TRACKING</span></div>
+        </div>
+    </div>
+
+    <div id="bottom-left" class="panel">
+        <p>> AR LINK: <span id="ws-status" style="color: yellow;">CONNECTING...</span></p>
+        <p>> GESTURE: <span id="cmd-status">STANDBY</span></p>
+    </div>
+
+    <div id="bottom-right" class="panel">
+        <b>AR GESTURES:</b><br>
+        • 2x L-Shape (Apart): Zoom In<br>
+        • 2x Open Palms (Close): Zoom Out<br>
+        • Fist: Lock / Unlock Earth<br>
+        • Finger Pinches (1-4): Switch Sat
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // 1. Scene & Transparent Renderer (Taaki piche ka camera dikhe)
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        camera.position.set(0, 1.8, 13);
+        camera.lookAt(0, 0, 0);
+
+        // 2. Helper: Lat/Lon ko 3D Globe Coordinates mein badalna
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+            const x = -(radius * Math.sin(phi) * Math.cos(theta));
+            const z = (radius * Math.sin(phi) * Math.sin(theta));
+            const y = (radius * Math.cos(phi));
+            return new THREE.Vector3(x, y, z);
+        }
+
+        // 3. Real Continents Holographic Earth
+        const earthGroup = new THREE.Group();
+        const R = 4.4;
+        const texLoader = new THREE.TextureLoader();
+
+        // Dark Earth Map with Continents tinted Cyan
+        const earthTex = texLoader.load('https://unpkg.com/three-globe/example/img/earth-dark.jpg');
+        const earthMat = new THREE.MeshBasicMaterial({
+            map: earthTex,
+            color: 0x00d9ff,
+            transparent: true,
+            opacity: 0.90
+        });
+        const earthMesh = new THREE.Mesh(new THREE.SphereGeometry(R, 48, 48), earthMat);
+
+        // Holographic Blue Wireframe Grid Overlay
+        const wireMat = new THREE.MeshBasicMaterial({
+            color: 0x00f0ff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.14
+        });
+        const wireMesh = new THREE.Mesh(new THREE.SphereGeometry(R + 0.04, 28, 28), wireMat);
+        earthGroup.add(earthMesh, wireMesh);
+
+        // India Marker (Central India: 21.25° N, 81.62° E)
+        const indiaPos = latLonToVector3(21.25, 81.62, R + 0.08);
+        const indiaPin = new THREE.Mesh(
+            new THREE.SphereGeometry(0.11, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+        );
+        indiaPin.position.copy(indiaPos);
+        earthGroup.add(indiaPin);
+
+        // India ko shuruat mein camera ke saamne (front) laane ke liye rotate karo
+        earthGroup.rotation.y = 2.95;
+        scene.add(earthGroup);
+
+        // 4. Real Live ISS Marker + Indian & LEO Satellites
+        const issMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.14, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0x00ff88 })
+        );
+        earthGroup.add(issMesh);
+
+        // Indian Regional Satellites (Fixed/Slow over India Sector)
+        const indiaSats = [
+            { key: "NAVIC", name: "NAVIC-1G (ISRO)", lat: 22.0, lon: 83.0, alt: "35,786 KM", vel: "3.07 KM/S", color: 0xffaa00, r: R + 1.4 },
+            { key: "INSAT", name: "INSAT-3D METRO",  lat: 0.5,  lon: 82.0, alt: "35,786 KM", vel: "3.07 KM/S", color: 0xffffff, r: R + 1.6 },
+            { key: "CARTOSAT", name: "CARTOSAT-3",   lat: 28.5, lon: 77.2, alt: "509 KM",    vel: "7.61 KM/S", color: 0xff00ff, r: R + 0.65 }
+        ];
+
+        indiaSats.forEach(s => {
+            const satDot = new THREE.Mesh(
+                new THREE.BoxGeometry(0.16, 0.16, 0.16),
+                new THREE.MeshBasicMaterial({ color: s.color })
+            );
+            satDot.position.copy(latLonToVector3(s.lat, s.lon, s.r));
+            earthGroup.add(satDot);
+            s.mesh = satDot;
+        });
+
+        // 30+ Realistic Slow-Moving LEO Constellation Satellites
+        const leoSats = [];
+        for (let i = 0; i < 30; i++) {
+            const pivot = new THREE.Group();
+            pivot.rotation.x = (Math.random() - 0.5) * Math.PI;
+            pivot.rotation.z = (Math.random() - 0.5) * Math.PI;
+
+            const sat = new THREE.Mesh(
+                new THREE.SphereGeometry(0.055, 8, 8),
+                new THREE.MeshBasicMaterial({ color: i % 3 === 0 ? 0x00ff88 : 0x00f0ff })
+            );
+            sat.position.x = R + 0.45 + Math.random() * 0.9;
+
+            const orbiter = new THREE.Group();
+            orbiter.rotation.y = Math.random() * Math.PI * 2;
+            orbiter.add(sat);
+            pivot.add(orbiter);
+            earthGroup.add(pivot);
+
+            // Realistic slow speed
+            leoSats.push({ orbiter, speed: 0.0008 + Math.random() * 0.0012 });
+        }
+
+        // 5. Live ISS API Fetch (Real-Time Location)
+        let issData = { lat: 20.0, lon: 78.0, alt: 420, vel: 27600 };
+        async function fetchLiveISS() {
+            try {
+                const res = await fetch("https://api.wheretheiss.at/v1/satellites/25544");
+                const data = await res.json();
+                issData = {
+                    lat: data.latitude,
+                    lon: data.longitude,
+                    alt: data.altitude.toFixed(1),
+                    vel: (data.velocity / 3600).toFixed(2)
+                };
+                issMesh.position.copy(latLonToVector3(issData.lat, issData.lon, R + 0.55));
+                if (activeSat === "ISS") updateTelemetry("ISS");
+            } catch (e) {
+                // Offline fallback
+                issMesh.position.copy(latLonToVector3(21.0, 79.0, R + 0.55));
+            }
+        }
+        fetchLiveISS();
+        setInterval(fetchLiveISS, 5000);
+
+        let activeSat = "ISS";
+        function updateTelemetry(key) {
+            activeSat = key;
+            ["ISS", "NAVIC", "CARTOSAT", "INSAT"].forEach(k => {
+                document.getElementById(`sat-${k}`).classList.toggle("active", k === key);
+            });
+            if (key === "ISS") {
+                document.getElementById("t-name").innerText = "ISS (LIVE REAL-TIME)";
+                document.getElementById("t-alt").innerText = `${issData.alt} KM`;
+                document.getElementById("t-vel").innerText = `${issData.vel} KM/S`;
+                document.getElementById("t-coords").innerText = `${issData.lat.toFixed(2)}° N, ${issData.lon.toFixed(2)}° E`;
+            } else {
+                const s = indiaSats.find(x => x.key === key);
+                if (s) {
+                    document.getElementById("t-name").innerText = s.name;
+                    document.getElementById("t-alt").innerText = s.alt;
+                    document.getElementById("t-vel").innerText = s.vel;
+                    document.getElementById("t-coords").innerText = `${s.lat}° N, ${s.lon}° E`;
+                }
+            }
+        }
+        updateTelemetry("ISS");
+
+        // 6. WebSocket Connection
+        let currentCommand = "STANDBY";
+        const ws = new WebSocket("ws://127.0.0.1:8000/ws");
+        ws.onopen = () => {
+            const el = document.getElementById("ws-status");
+            el.innerText = "ONLINE (AR STREAM)";
+            el.style.color = "#00ff88";
+        };
+        ws.onmessage = (e) => {
+            currentCommand = e.data;
+            document.getElementById("cmd-status").innerText = currentCommand;
+            if (currentCommand === "SAT_ISS") updateTelemetry("ISS");
+            if (currentCommand === "SAT_NAVIC") updateTelemetry("NAVIC");
+            if (currentCommand === "SAT_CARTOSAT") updateTelemetry("CARTOSAT");
+            if (currentCommand === "SAT_INSAT") updateTelemetry("INSAT");
+        };
+
+        // Keyboard Backup
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "1") updateTelemetry("ISS");
+            if (e.key === "2") updateTelemetry("NAVIC");
+            if (e.key === "3") updateTelemetry("CARTOSAT");
+            if (e.key === "4") updateTelemetry("INSAT");
+            if (e.key === "+") camera.position.z = Math.max(6.5, camera.position.z - 0.8);
+            if (e.key === "-") camera.position.z = Math.min(24, camera.position.z + 0.8);
+            if (e.code === "Space") currentCommand = (currentCommand === "LOCK") ? "STANDBY" : "LOCK";
+        });
+
+        setInterval(() => {
+            document.getElementById("clock").innerText = "UTC: " + new Date().toISOString().substr(11, 8);
+        }, 1000);
+
+        // 7. Smooth Animation Loop (Realistic Slow Rotation)
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const isLocked = (currentCommand === "LOCK");
+            document.getElementById("t-status").innerText = isLocked ? "ORBIT LOCKED" : "TRACKING";
+            document.getElementById("t-status").style.color = isLocked ? "#ff4444" : "#00ff88";
+
+            if (isLocked) {
+                wireMat.color.setHex(0xff3333);
+            } else {
+                wireMat.color.setHex(0x00f0ff);
+                earthGroup.rotation.y += 0.0006; // Realistic slow Earth rotation
+                leoSats.forEach(s => { s.orbiter.rotation.y += s.speed; });
+            }
+
+            if (currentCommand === "ZOOM_IN" && camera.position.z > 6.5) camera.position.z -= 0.18;
+            if (currentCommand === "ZOOM_OUT" && camera.position.z < 24) camera.position.z += 0.18;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

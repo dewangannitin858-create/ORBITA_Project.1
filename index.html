@@ -3,550 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORBITA v3.0 — Clay Orbital Command & Voice AI</title>
+    <title>ORBITA v3.1 — Minimal Clay Orbital Command & Voice AI</title>
     <style>
         :root {
             --bg-space: #020305;
-            --clay-surface: linear-gradient(145deg, #181b22, #111318);
-            --clay-recessed: #0c0e12;
-            --clay-shadow: 10px 10px 24px rgba(0, 0, 0, 0.88),
-                           -3px -3px 10px rgba(255, 255, 255, 0.025),
-                           inset 2px 2px 4px rgba(255, 255, 255, 0.06),
-                           inset -3px -3px 8px rgba(0, 0, 0, 0.75);
-            --clay-inset: inset 3px 3px 7px rgba(0, 0, 0, 0.85),
-                          inset -2px -2px 5px rgba(255, 255, 255, 0.04);
-            --text-primary: #eae7e0;
-            --text-muted: #8e939e;
-            --accent-terracotta: #c88a65;
-            --accent-sage: #7fa38d;
-            --accent-slate: #7b96b0;
-            --accent-danger: #c46d6d;
+            --clay-bg: linear-gradient(145deg, #181b22, #101217);
+            --clay-in: #0b0d11;
+            --clay-shadow: 8px 8px 20px rgba(0,0,0,0.9), -2px -2px 8px rgba(255,255,255,0.025),
+                           inset 2px 2px 4px rgba(255,255,255,0.06), inset -3px -3px 7px rgba(0,0,0,0.8);
+            --clay-inset: inset 3px 3px 7px rgba(0,0,0,0.85), inset -2px -2px 5px rgba(255,255,255,0.04);
+            --text: #eae7e0;
+            --muted: #8b909c;
+            --terra: #c88a65;
+            --sage: #7fa38d;
+            --slate: #7b96b0;
+            --danger: #c46d6d;
         }
-
         * { box-sizing: border-box; }
         body {
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--bg-space);
-            color: var(--text-primary);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0; overflow: hidden; background: var(--bg-space); color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             user-select: none;
         }
-
-        #canvas-container {
-            position: fixed;
-            inset: 0;
-            z-index: 1;
-            cursor: grab;
-        }
+        #canvas-container { position: fixed; inset: 0; z-index: 1; cursor: grab; }
         #canvas-container:active { cursor: grabbing; }
 
-        .clay-panel {
-            position: absolute;
-            z-index: 10;
-            background: var(--clay-surface);
-            border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: var(--clay-shadow);
-            padding: 16px 20px;
+        /* Compact Top-Left Status Pill */
+        #top-pill {
+            position: fixed; top: 16px; left: 16px; z-index: 20;
+            background: var(--clay-bg); border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.05); box-shadow: var(--clay-shadow);
+            padding: 9px 15px; display: flex; align-items: center; gap: 12px;
         }
+        #top-pill h1 { font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 2px; }
+        .sep { width: 1px; height: 16px; background: rgba(255,255,255,0.08); }
+        #mini-status { font-size: 11px; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+        #mini-status b { color: var(--terra); }
+        #clock { font-family: 'Courier New', monospace; color: var(--sage); }
 
-        /* Top-Left Header */
-        #top-left {
-            top: 18px;
-            left: 18px;
-            width: 295px;
-            pointer-events: none;
+        /* Left Vertical Clay Icon Rail */
+        #icon-dock {
+            position: fixed; top: 76px; left: 16px; z-index: 25;
+            display: flex; flex-direction: column; gap: 11px;
         }
-        #top-left h1 {
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0;
-            letter-spacing: 2px;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .dock-btn {
+            width: 44px; height: 44px; border-radius: 15px;
+            background: var(--clay-bg); border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--clay-shadow); color: var(--text); font-size: 17px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; transition: 0.18s ease;
         }
-        .badge-v3 {
-            font-size: 10px;
-            padding: 3px 8px;
-            border-radius: 10px;
-            background: var(--clay-recessed);
-            color: var(--accent-sage);
-            box-shadow: var(--clay-inset);
-            letter-spacing: 1px;
+        .dock-btn:hover { transform: translateY(-1px); border-color: rgba(200,138,101,0.4); }
+        .dock-btn.active { background: var(--clay-in); box-shadow: var(--clay-inset); border-color: rgba(200,138,101,0.55); }
+        .dock-btn::after {
+            content: attr(data-tip); position: absolute; left: 54px;
+            background: #14171e; color: var(--text); font-size: 11px; font-weight: 600;
+            padding: 5px 10px; border-radius: 10px; white-space: nowrap;
+            opacity: 0; pointer-events: none; transform: translateX(-4px); transition: 0.15s;
+            border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 6px 16px rgba(0,0,0,0.85);
         }
-        #top-left p {
-            margin: 5px 0 0;
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        #clock {
-            font-family: 'Courier New', monospace;
-            color: var(--accent-terracotta) !important;
-            font-weight: 600;
-        }
+        .dock-btn:hover::after { opacity: 1; transform: translateX(0); }
 
-        /* Left Stack: Ground Stations + OSINT Layers */
-        #left-stack {
-            position: absolute;
-            top: 118px;
-            left: 18px;
-            width: 295px;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
+        /* Collapsible Side Drawer (Hidden until icon clicked) */
+        .clay-drawer {
+            display: none; position: fixed; top: 76px; left: 72px; width: 315px; z-index: 24;
+            background: var(--clay-bg); border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.06); box-shadow: var(--clay-shadow);
+            padding: 15px 17px; animation: popIn 0.16s ease-out;
         }
-        .static-clay {
-            position: relative;
-            background: var(--clay-surface);
-            border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: var(--clay-shadow);
-            padding: 14px 18px;
+        .clay-drawer.open { display: block; }
+        @keyframes popIn {
+            from { opacity: 0; transform: translateX(-8px) scale(0.98); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
         }
-        .section-title {
-            margin: 0 0 10px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1.4px;
-            color: var(--text-muted);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .drawer-head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 11px; padding-bottom: 7px; border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-        .gs-list-scroll {
-            max-height: 155px;
-            overflow-y: auto;
-            padding-right: 4px;
+        .drawer-head span { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+        .close-x {
+            background: var(--clay-in); box-shadow: var(--clay-inset); border: none;
+            color: var(--muted); border-radius: 8px; width: 24px; height: 24px; cursor: pointer; font-size: 12px;
         }
-        .gs-list-scroll::-webkit-scrollbar { width: 4px; }
-        .gs-list-scroll::-webkit-scrollbar-thumb { background: #2a2f3a; border-radius: 4px; }
+        .close-x:hover { color: var(--terra); }
 
-        .gs-item {
-            padding: 6px 10px;
-            margin-bottom: 5px;
-            border-radius: 12px;
-            font-size: 11.5px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: var(--text-primary);
-            transition: all 0.2s ease;
+        /* Search & List Items */
+        .search-wrap { position: relative; margin-bottom: 9px; }
+        #sat-search, #voice-input {
+            width: 100%; background: var(--clay-in); border: 1px solid rgba(255,255,255,0.04);
+            box-shadow: var(--clay-inset); border-radius: 13px; padding: 8px 11px;
+            color: var(--text); font-size: 12px; outline: none; font-family: inherit;
         }
-        .gs-item:hover {
-            background: var(--clay-recessed);
-            box-shadow: var(--clay-inset);
-            color: var(--accent-terracotta);
-        }
-        .gs-tag {
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--accent-terracotta);
-        }
-
-        /* OSINT Layer Toggles */
-        .osint-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        .clay-toggle {
-            background: var(--clay-recessed);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            box-shadow: var(--clay-inset);
-            color: var(--text-muted);
-            border-radius: 14px;
-            padding: 9px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s ease;
-        }
-        .clay-toggle.active {
-            background: linear-gradient(145deg, #222732, #171b23);
-            color: var(--accent-sage);
-            border-color: rgba(127, 163, 141, 0.35);
-            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.7), inset 1px 1px 3px rgba(255, 255, 255, 0.08);
-        }
-        #osint-readout {
-            margin-top: 8px;
-            font-size: 11px;
-            color: var(--text-muted);
-            min-height: 16px;
-        }
-
-        /* Right Panel: Satellites, Search & Telemetry */
-        #right-panel {
-            top: 18px;
-            right: 18px;
-            width: 345px;
-        }
-        .search-box {
-            position: relative;
-            margin-bottom: 10px;
-        }
-        #sat-search {
-            width: 100%;
-            background: var(--clay-recessed);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            box-shadow: var(--clay-inset);
-            border-radius: 14px;
-            padding: 9px 12px;
-            color: var(--text-primary);
-            font-size: 12px;
-            outline: none;
-            font-family: inherit;
-        }
-        #sat-search::placeholder { color: #5f6572; }
         #search-results {
-            display: none;
-            position: absolute;
-            top: 40px;
-            left: 0;
-            right: 0;
-            background: #14171e;
-            border-radius: 14px;
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            max-height: 160px;
-            overflow-y: auto;
-            z-index: 30;
+            display: none; position: absolute; top: 38px; left: 0; right: 0;
+            background: #14171e; border-radius: 12px; max-height: 145px; overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.08); z-index: 30;
         }
-        .search-hit {
-            padding: 8px 12px;
-            font-size: 11.5px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-        }
-        .search-hit:hover { background: #1e232d; color: var(--accent-terracotta); }
+        .search-hit { padding: 7px 11px; font-size: 11.5px; cursor: pointer; display: flex; justify-content: space-between; }
+        .search-hit:hover { background: #1e232d; color: var(--terra); }
 
-        .sat-item {
-            padding: 8px 12px;
-            margin-bottom: 6px;
-            border-radius: 14px;
-            background: rgba(255, 255, 255, 0.015);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            font-size: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        .sat-item, .gs-item {
+            padding: 7px 11px; margin-bottom: 5px; border-radius: 12px; font-size: 11.5px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: 0.18s; background: rgba(255,255,255,0.015);
         }
-        .sat-item:hover { background: rgba(255, 255, 255, 0.04); }
+        .sat-item:hover, .gs-item:hover { background: rgba(255,255,255,0.04); color: var(--terra); }
         .sat-item.active {
-            background: var(--clay-recessed);
-            box-shadow: var(--clay-inset);
-            border-color: rgba(200, 138, 101, 0.35);
-            font-weight: 600;
-            color: var(--text-primary);
+            background: var(--clay-in); box-shadow: var(--clay-inset);
+            border: 1px solid rgba(200,138,101,0.35); font-weight: 600;
+        }
+        .gs-scroll { max-height: 220px; overflow-y: auto; }
+
+        .tele-box {
+            margin-top: 9px; background: var(--clay-in); box-shadow: var(--clay-inset);
+            border-radius: 14px; padding: 10px 12px; font-size: 11px; line-height: 1.65; color: var(--muted);
+        }
+        .tele-box div { display: flex; justify-content: space-between; }
+        .tele-box span { color: var(--text); font-family: 'Courier New', monospace; font-weight: 600; }
+
+        .clay-action-btn {
+            margin-top: 10px; width: 100%; padding: 9px; border-radius: 13px;
+            background: linear-gradient(145deg, #232833, #171a22);
+            border: 1px solid rgba(200,138,101,0.3); box-shadow: 5px 5px 12px rgba(0,0,0,0.75);
+            color: var(--terra); font-weight: 700; font-size: 11.5px; cursor: pointer; font-family: inherit;
+        }
+        .clay-action-btn.active { background: var(--terra); color: #101217; }
+
+        .osint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .clay-toggle {
+            background: var(--clay-in); box-shadow: var(--clay-inset);
+            border: 1px solid rgba(255,255,255,0.04); color: var(--muted);
+            border-radius: 13px; padding: 9px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+        }
+        .clay-toggle.active { color: var(--sage); border-color: rgba(127,163,141,0.4); }
+
+        /* Compact Bottom-Left Floating Voice Pill (Always 1-click accessible) */
+        #voice-pill {
+            position: fixed; bottom: 16px; left: 16px; z-index: 25;
+            background: var(--clay-bg); border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.06); box-shadow: var(--clay-shadow);
+            padding: 8px 14px; display: flex; align-items: center; gap: 10px;
+            max-width: min(460px, 92vw);
+        }
+        #mic-pill-btn {
+            background: linear-gradient(145deg, #242934, #161920);
+            border: 1px solid rgba(127,163,141,0.35); box-shadow: 4px 4px 10px rgba(0,0,0,0.8);
+            color: var(--sage); border-radius: 13px; padding: 7px 12px;
+            font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+        }
+        #mic-pill-btn.listening { background: var(--terra); color: #101217; }
+        #voice-subtitle {
+            font-size: 11.5px; color: var(--text); white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; max-width: 270px;
         }
 
-        .telemetry-card {
-            margin-top: 10px;
-            background: var(--clay-recessed);
-            box-shadow: var(--clay-inset);
-            border-radius: 16px;
-            padding: 12px 14px;
-            font-size: 11.5px;
-            line-height: 1.7;
-            color: var(--text-muted);
-        }
-        .telemetry-card div {
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-        }
-        .telemetry-card span {
-            color: var(--text-primary);
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            text-align: right;
-        }
-        #t-country { color: var(--accent-terracotta) !important; }
-        #t-gs-link { color: var(--accent-sage) !important; }
-
-        #view-max-btn {
-            margin-top: 12px;
-            width: 100%;
-            padding: 11px;
-            border-radius: 15px;
-            background: linear-gradient(145deg, #242934, #181b23);
-            border: 1px solid rgba(200, 138, 101, 0.3);
-            box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.75), inset 1px 1px 3px rgba(255, 255, 255, 0.08);
-            color: var(--accent-terracotta);
-            font-family: inherit;
-            font-weight: 700;
-            font-size: 12px;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        #view-max-btn:hover, #view-max-btn.active {
-            background: var(--accent-terracotta);
-            color: #111318;
-            box-shadow: 0 4px 16px rgba(200, 138, 101, 0.35);
-        }
-
-        /* Bottom-Left: JARVIS Voice & Comm Assistant */
-        #voice-panel {
-            bottom: 18px;
-            left: 18px;
-            width: 390px;
-        }
-        .voice-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .voice-title {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            color: var(--accent-sage);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent-sage);
-        }
-        .pulse-dot.listening {
-            background: var(--accent-terracotta);
-            animation: softPulse 1.1s infinite;
-        }
-        @keyframes softPulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.5); opacity: 0.45; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        #voice-reply {
-            background: var(--clay-recessed);
-            box-shadow: var(--clay-inset);
-            border-radius: 14px;
-            padding: 10px 12px;
-            font-size: 12px;
-            line-height: 1.45;
-            color: var(--text-primary);
-            min-height: 44px;
-            max-height: 76px;
-            overflow-y: auto;
-            margin-bottom: 10px;
-        }
-        .voice-controls {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        .clay-icon-btn {
-            background: linear-gradient(145deg, #222630, #161920);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.75), inset 1px 1px 2px rgba(255, 255, 255, 0.08);
-            color: var(--text-primary);
-            border-radius: 14px;
-            padding: 9px 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            white-space: nowrap;
-        }
-        .clay-icon-btn.recording {
-            background: var(--accent-terracotta);
-            color: #111318;
-        }
-        #voice-text-input {
-            flex: 1;
-            background: var(--clay-recessed);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            box-shadow: var(--clay-inset);
-            border-radius: 14px;
-            padding: 9px 12px;
-            color: var(--text-primary);
-            font-size: 12px;
-            outline: none;
-            font-family: inherit;
-        }
-
-        /* VIEW MAX Deep Satellite Dossier Modal */
+        /* VIEW MAX Deep Dossier Modal */
         #max-dossier {
-            display: none;
-            position: fixed;
-            bottom: 165px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(670px, 92vw);
-            z-index: 25;
-            background: var(--clay-surface);
-            border-radius: 24px;
-            border: 1px solid rgba(200, 138, 101, 0.3);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.92), inset 2px 2px 5px rgba(255, 255, 255, 0.06);
-            padding: 20px 24px;
+            display: none; position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%);
+            width: min(640px, 92vw); z-index: 30; background: var(--clay-bg); border-radius: 22px;
+            border: 1px solid rgba(200,138,101,0.32); box-shadow: 0 20px 50px rgba(0,0,0,0.92);
+            padding: 18px 22px;
         }
         #max-dossier.visible { display: block; }
-        .dossier-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-            padding-bottom: 10px;
-            margin-bottom: 14px;
-        }
-        .dossier-header h2 { margin: 0; font-size: 16px; color: var(--accent-terracotta); letter-spacing: 1px; }
-        .close-max {
-            background: var(--clay-recessed);
-            box-shadow: var(--clay-inset);
-            border: 1px solid rgba(196, 109, 109, 0.35);
-            color: var(--accent-danger);
-            border-radius: 12px;
-            padding: 6px 12px;
-            font-family: inherit;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 11px;
-        }
-        .dossier-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px 18px;
-            font-size: 12px;
-            margin-bottom: 14px;
-        }
-        .dossier-grid div b { color: var(--text-muted); font-weight: 600; }
-        .dossier-grid div span { color: var(--text-primary); font-weight: 600; }
+        .dossier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 11.5px; margin: 10px 0; }
+        .dossier-grid b { color: var(--muted); }
         .dossier-payload {
-            background: var(--clay-recessed);
-            box-shadow: var(--clay-inset);
-            border-radius: 16px;
-            padding: 12px 14px;
-            font-size: 12px;
-            line-height: 1.55;
-            color: #d6d3cb;
+            background: var(--clay-in); box-shadow: var(--clay-inset); border-radius: 14px;
+            padding: 10px 12px; font-size: 11.5px; line-height: 1.5; color: #d6d3cb;
         }
-        .dossier-payload b { color: var(--accent-sage); display: block; margin-bottom: 4px; font-size: 11px; letter-spacing: 0.8px; }
-
-        /* Bottom-Right Controls Hint */
-        #bottom-right {
-            bottom: 18px;
-            right: 18px;
-            font-size: 11px;
-            color: var(--text-muted);
-            line-height: 1.6;
-            pointer-events: none;
-        }
-        #bottom-right b { color: var(--text-primary); }
     </style>
 </head>
 <body>
-    <div id="top-left" class="clay-panel">
-        <h1>ORBITA <span class="badge-v3">v3.0 CLAY</span></h1>
-        <p id="tle-status">Initializing SGP4 Orbital Engine...</p>
-        <p id="clock">UTC: --:--:--</p>
-    </div>
-
-    <div id="left-stack">
-        <div class="static-clay">
-            <div class="section-title">
-                <span>📡 Ground Stations</span>
-                <span style="color:var(--accent-terracotta);font-size:10px;">8 ACTIVE</span>
-            </div>
-            <div id="gs-list" class="gs-list-scroll"></div>
-        </div>
-
-        <div class="static-clay">
-            <div class="section-title">
-                <span>🌐 Live OSINT Layers</span>
-                <span style="color:var(--accent-sage);font-size:10px;">FEEDS</span>
-            </div>
-            <div class="osint-grid">
-                <button id="btn-quakes" class="clay-toggle" onclick="toggleQuakes()">🌋 Earthquakes</button>
-                <button id="btn-flights" class="clay-toggle" onclick="toggleFlights()">✈️ India Flights</button>
-            </div>
-            <div id="osint-readout">Click a layer to overlay live global events.</div>
+    <!-- Compact Top-Left Brand Pill -->
+    <div id="top-pill">
+        <h1>ORBITA</h1>
+        <div class="sep"></div>
+        <div id="mini-status">
+            <span>TARGET: <b id="pill-sat">ISS (ZARYA)</b></span>
+            <span>OVER: <b id="pill-country" style="color:var(--sage);">SCANNING</b></span>
+            <span id="clock">UTC --:--:--</span>
         </div>
     </div>
 
-    <div id="right-panel" class="clay-panel">
-        <div class="section-title">
-            <span id="sat-count-title">Live Satellites</span>
-            <span id="orbit-lock-badge" style="color:var(--accent-sage);font-size:10px;">TRACKING</span>
-        </div>
+    <!-- Left Vertical Clay Icon Rail -->
+    <div id="icon-dock">
+        <button class="dock-btn" data-tip="Satellites & Telemetry" onclick="toggleDrawer('drawer-sats', this)">🛰️</button>
+        <button class="dock-btn" data-tip="Ground Stations" onclick="toggleDrawer('drawer-gs', this)">📡</button>
+        <button class="dock-btn" data-tip="Live OSINT Feeds" onclick="toggleDrawer('drawer-osint', this)">🌐</button>
+        <button class="dock-btn" data-tip="Voice AI Chat" onclick="toggleDrawer('drawer-voice', this)">💬</button>
+        <button class="dock-btn" data-tip="Keyboard Shortcuts" onclick="toggleDrawer('drawer-keys', this)">⌨️</button>
+    </div>
 
-        <div class="search-box">
-            <input id="sat-search" type="text" placeholder="🔍 Search 100+ satellites (e.g. STARLINK, GSAT)..." autocomplete="off">
+    <!-- Drawer 1: Satellites & Telemetry -->
+    <div id="drawer-sats" class="clay-drawer">
+        <div class="drawer-head">
+            <span id="sat-count-title">Satellites</span>
+            <button class="close-x" onclick="closeAllDrawers()">✕</button>
+        </div>
+        <div class="search-wrap">
+            <input id="sat-search" type="text" placeholder="🔍 Search satellite (e.g. STARLINK, GSAT)..." autocomplete="off">
             <div id="search-results"></div>
         </div>
+        <div id="sat-ISS" class="sat-item active" onclick="selectPreset('ISS')"><span>[1] ISS (ZARYA)</span><span style="color:var(--sage);">LEO</span></div>
+        <div id="sat-NAVIC" class="sat-item" onclick="selectPreset('NAVIC')"><span>[2] IRNSS-1I (NAVIC)</span><span style="color:var(--terra);">ISRO</span></div>
+        <div id="sat-CARTOSAT" class="sat-item" onclick="selectPreset('CARTOSAT')"><span>[3] CARTOSAT-3</span><span style="color:var(--slate);">ISRO</span></div>
+        <div id="sat-INSAT" class="sat-item" onclick="selectPreset('INSAT')"><span>[4] EOS-06 (OCEANSAT)</span><span style="color:var(--muted);">ISRO</span></div>
 
-        <div id="sat-ISS" class="sat-item active" onclick="selectPreset('ISS')"><span>[1] ISS (ZARYA)</span><span style="color:var(--accent-sage);font-size:11px;">LEO</span></div>
-        <div id="sat-NAVIC" class="sat-item" onclick="selectPreset('NAVIC')"><span>[2] IRNSS-1I (NAVIC)</span><span style="color:var(--accent-terracotta);font-size:11px;">ISRO</span></div>
-        <div id="sat-CARTOSAT" class="sat-item" onclick="selectPreset('CARTOSAT')"><span>[3] CARTOSAT-3</span><span style="color:var(--accent-slate);font-size:11px;">ISRO</span></div>
-        <div id="sat-INSAT" class="sat-item" onclick="selectPreset('INSAT')"><span>[4] EOS-06 (OCEANSAT)</span><span style="color:var(--text-muted);font-size:11px;">ISRO</span></div>
-
-        <div class="telemetry-card">
-            <div>TARGET <span id="t-name">ISS (ZARYA)</span></div>
-            <div>OVERHEAD <span id="t-country">SCANNING...</span></div>
+        <div class="tele-box">
+            <div>OVERHEAD <span id="t-country" style="color:var(--terra);">SCANNING...</span></div>
             <div>ALTITUDE <span id="t-alt">-- KM</span></div>
             <div>VELOCITY <span id="t-vel">-- KM/S</span></div>
             <div>COORDS <span id="t-coords">--° N, --° E</span></div>
-            <div>GROUND LINK <span id="t-gs-link">SEARCHING...</span></div>
+            <div>STATION <span id="t-gs-link" style="color:var(--sage);">SEARCHING...</span></div>
         </div>
+        <button id="view-max-btn" class="clay-action-btn" onclick="toggleViewMax()">⛶ VIEW MAX (3D INSPECT) [M]</button>
+    </div>
 
-        <button id="view-max-btn" onclick="toggleViewMax()">⛶ VIEW MAX (3D INSPECT) [M]</button>
+    <!-- Drawer 2: Ground Stations -->
+    <div id="drawer-gs" class="clay-drawer">
+        <div class="drawer-head">
+            <span>📡 Ground Stations (8)</span>
+            <button class="close-x" onclick="closeAllDrawers()">✕</button>
+        </div>
+        <div id="gs-list" class="gs-scroll"></div>
+    </div>
+
+    <!-- Drawer 3: Live OSINT Layers -->
+    <div id="drawer-osint" class="clay-drawer">
+        <div class="drawer-head">
+            <span>🌐 Live OSINT Layers</span>
+            <button class="close-x" onclick="closeAllDrawers()">✕</button>
+        </div>
+        <div class="osint-grid">
+            <button id="btn-quakes" class="clay-toggle" onclick="toggleQuakes()">🌋 Earthquakes</button>
+            <button id="btn-flights" class="clay-toggle" onclick="toggleFlights()">✈️ India Flights</button>
+        </div>
+        <div id="osint-readout" style="margin-top:9px;font-size:11px;color:var(--muted);">Toggle live global events on globe.</div>
+    </div>
+
+    <!-- Drawer 4: Voice AI Chat & History -->
+    <div id="drawer-voice" class="clay-drawer">
+        <div class="drawer-head">
+            <span>🤖 ORBITA Voice AI</span>
+            <button class="close-x" onclick="closeAllDrawers()">✕</button>
+        </div>
+        <div id="voice-chat-box" class="tele-box" style="margin-top:0;margin-bottom:9px;max-height:140px;overflow-y:auto;color:var(--text);">
+            Click <b>🎙️ Talk</b> or type below. Try: <i>"Where is ISS?"</i>, <i>"India dikhao"</i>, <i>"View Max"</i>, or <i>"Show earthquakes"</i>.
+        </div>
+        <input id="voice-input" type="text" placeholder="Type message & press Enter...">
+    </div>
+
+    <!-- Drawer 5: Keyboard Controls -->
+    <div id="drawer-keys" class="clay-drawer">
+        <div class="drawer-head">
+            <span>⌨️ Controls</span>
+            <button class="close-x" onclick="closeAllDrawers()">✕</button>
+        </div>
+        <div class="tele-box" style="margin-top:0;line-height:1.8;">
+            <div>Rotate 360° <span>W A S D / Drag</span></div>
+            <div>Zoom In / Out <span>+ / - / Scroll</span></div>
+            <div>Featured Sats <span>1, 2, 3, 4</span></div>
+            <div>Next / Prev Sat <span>N / P / Click</span></div>
+            <div>Focus India <span>I</span></div>
+            <div>View Max Dossier <span>M</span></div>
+            <div>Voice Assistant <span>V</span></div>
+            <div>Lock / Unlock <span>Space</span></div>
+        </div>
+    </div>
+
+    <!-- Compact Floating Voice Pill (Always 1-click ready) -->
+    <div id="voice-pill">
+        <button id="mic-pill-btn" onclick="startVoiceListening()">🎙️ Talk [V]</button>
+        <span id="voice-subtitle">Click Talk or press V to speak with ORBITA</span>
     </div>
 
     <!-- VIEW MAX Deep Satellite Dossier -->
     <div id="max-dossier">
-        <div class="dossier-header">
-            <h2 id="d-title">🛰️ ISS (ZARYA) — NORAD #25544</h2>
-            <button class="close-max" onclick="toggleViewMax(false)">✕ EXIT [M]</button>
+        <div class="drawer-head">
+            <span id="d-title" style="color:var(--terra);font-size:13px;">🛰️ ISS (ZARYA)</span>
+            <button class="close-x" onclick="toggleViewMax(false)">✕</button>
         </div>
         <div class="dossier-grid">
-            <div><b>OVERHEAD REGION:</b> <span id="d-country" style="color:var(--accent-terracotta);">--</span></div>
-            <div><b>AGENCY / OPERATOR:</b> <span id="d-agency">--</span></div>
-            <div><b>ORBIT & ALTITUDE:</b> <span id="d-orbit">--</span></div>
-            <div><b>ORBITAL VELOCITY:</b> <span id="d-vel">--</span></div>
-            <div><b>INCLINATION / PERIOD:</b> <span id="d-inc">--</span></div>
-            <div><b>GROUND STATION LINK:</b> <span id="d-gs" style="color:var(--accent-sage);">--</span></div>
+            <div><b>OVERHEAD:</b> <span id="d-country" style="color:var(--terra);">--</span></div>
+            <div><b>AGENCY:</b> <span id="d-agency">--</span></div>
+            <div><b>ORBIT:</b> <span id="d-orbit">--</span></div>
+            <div><b>VELOCITY:</b> <span id="d-vel">--</span></div>
+            <div><b>INCLINATION:</b> <span id="d-inc">--</span></div>
+            <div><b>STATION:</b> <span id="d-gs" style="color:var(--sage);">--</span></div>
         </div>
         <div class="dossier-payload">
-            <b>📡 PAYLOAD & MISSION CAPABILITIES</b>
+            <b style="color:var(--sage);display:block;margin-bottom:3px;">PAYLOAD & CAPABILITIES</b>
             <span id="d-details">--</span>
         </div>
-    </div>
-
-    <!-- Conversational Voice AI Panel -->
-    <div id="voice-panel" class="clay-panel">
-        <div class="voice-header">
-            <div class="voice-title">
-                <span id="voice-dot" class="pulse-dot"></span>
-                <span>ORBITA VOICE ASSISTANT</span>
-            </div>
-            <button id="mute-btn" class="clay-icon-btn" style="padding:4px 9px;font-size:11px;" onclick="toggleSpeechAudio()">🔊 Audio On</button>
-        </div>
-        <div id="voice-reply">Ready, Commander. Ask me: "Where is ISS?", "Track Cartosat", "Focus on India", or "Show earthquakes".</div>
-        <div class="voice-controls">
-            <button id="mic-btn" class="clay-icon-btn" onclick="startVoiceListening()">🎙️ Speak [V]</button>
-            <input id="voice-text-input" type="text" placeholder="Or type command & press Enter...">
-        </div>
-    </div>
-
-    <div id="bottom-right" class="clay-panel">
-        <b>CONTROLS:</b><br>
-        • <b>W A S D</b> / Drag: 360° Rotate | <b>+</b>/<b>-</b>: Zoom<br>
-        • <b>1-4</b>: Presets | <b>N</b>/<b>P</b>: Next/Prev Sat<br>
-        • <b>I</b>: India | <b>Space</b>: Lock | <b>M</b>: View Max | <b>V</b>: Talk
     </div>
 
     <div id="canvas-container"></div>
@@ -554,80 +302,68 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
     <script>
-        // 1. Deep Space Scene & Renderer
+        // Drawer Toggle Logic (Clean Screen by Default)
+        function closeAllDrawers() {
+            document.querySelectorAll('.clay-drawer').forEach(d => d.classList.remove('open'));
+            document.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
+        }
+        function toggleDrawer(id, btnEl) {
+            const target = document.getElementById(id);
+            const wasOpen = target.classList.contains('open');
+            closeAllDrawers();
+            if (!wasOpen) {
+                target.classList.add('open');
+                if (btnEl) btnEl.classList.add('active');
+            }
+        }
+
+        // 1. Deep Black Space Scene & Renderer
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.05, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.getElementById('canvas-container').appendChild(renderer.domElement);
-        camera.position.set(0, 1.3, 13.0);
+        camera.position.set(0, 1.2, 12.6);
 
-        // Subtle Deep Space Starfield (No harsh colors)
         const starGeo = new THREE.BufferGeometry();
-        const starCount = 2200;
-        const starPositions = new Float32Array(starCount * 3);
-        for (let i = 0; i < starCount * 3; i++) {
-            starPositions[i] = (Math.random() - 0.5) * 300;
-        }
+        const starPositions = new Float32Array(2200 * 3);
+        for (let i = 0; i < starPositions.length; i++) starPositions[i] = (Math.random() - 0.5) * 300;
         starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-        const starField = new THREE.Points(
-            starGeo,
-            new THREE.PointsMaterial({ color: 0xc8c5be, size: 0.22, transparent: true, opacity: 0.65 })
-        );
+        const starField = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xc8c5be, size: 0.22, transparent: true, opacity: 0.6 }));
         scene.add(starField);
 
-        // Balanced Natural Lighting
-        const ambientLight = new THREE.AmbientLight(0xe6e4df, 1.25);
+        scene.add(new THREE.AmbientLight(0xe6e4df, 1.25));
         const sunLight = new THREE.DirectionalLight(0xfff8ee, 1.15);
         sunLight.position.set(12, 8, 15);
-        scene.add(ambientLight, sunLight);
+        scene.add(sunLight);
 
-        const EARTH_RADIUS_KM = 6371.0;
         const GLOBE_R = 4.35;
-
         function latLonAltToVector3(lat, lon, altKm) {
-            const r = GLOBE_R * (1 + (altKm / EARTH_RADIUS_KM) * 0.52);
+            const r = GLOBE_R * (1 + (altKm / 6371.0) * 0.52);
             const phi = (90 - lat) * (Math.PI / 180);
             const theta = (lon + 180) * (Math.PI / 180);
-            return new THREE.Vector3(
-                -(r * Math.sin(phi) * Math.cos(theta)),
-                (r * Math.cos(phi)),
-                (r * Math.sin(phi) * Math.sin(theta))
-            );
+            return new THREE.Vector3(-(r * Math.sin(phi) * Math.cos(theta)), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
         }
 
-        // 2. Photorealistic Continents Earth (Zero Grid Lines)
+        // 2. Photorealistic Continents Earth (No Grid Lines)
         const earthGroup = new THREE.Group();
         const texLoader = new THREE.TextureLoader();
-        const blueMarbleTex = texLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg');
-        const bumpTex = texLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png');
-
         const earthMesh = new THREE.Mesh(
             new THREE.SphereGeometry(GLOBE_R, 64, 64),
             new THREE.MeshPhongMaterial({
-                map: blueMarbleTex,
-                bumpMap: bumpTex,
-                bumpScale: 0.055,
-                specular: new THREE.Color(0x1c2530),
-                shininess: 12
+                map: texLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
+                bumpMap: texLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
+                bumpScale: 0.055, specular: new THREE.Color(0x1c2530), shininess: 12
             })
         );
-        earthGroup.add(earthMesh);
-
-        // Muted Slate Atmospheric Rim
         const atmoMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(GLOBE_R + 0.10, 48, 48),
-            new THREE.MeshBasicMaterial({
-                color: 0x7b96b0,
-                transparent: true,
-                opacity: 0.08,
-                side: THREE.BackSide
-            })
+            new THREE.SphereGeometry(GLOBE_R + 0.1, 48, 48),
+            new THREE.MeshBasicMaterial({ color: 0x7b96b0, transparent: true, opacity: 0.08, side: THREE.BackSide })
         );
-        earthGroup.add(atmoMesh);
+        earthGroup.add(earthMesh, atmoMesh);
 
-        // 3. Satellite Ground Stations
+        // 3. Ground Stations
         const GROUND_STATIONS = [
             { name: "ISTRAC Bengaluru", agency: "ISRO", lat: 13.03, lon: 77.51 },
             { name: "MCF Hassan", agency: "ISRO", lat: 13.00, lon: 76.10 },
@@ -638,341 +374,183 @@
             { name: "ESA ESOC Darmstadt", agency: "ESA", lat: 49.87, lon: 8.62 },
             { name: "JAXA Tsukuba", agency: "JAXA", lat: 36.06, lon: 140.12 }
         ];
-
         const gsListEl = document.getElementById("gs-list");
         GROUND_STATIONS.forEach(gs => {
             const pos = latLonAltToVector3(gs.lat, gs.lon, 15);
             gs.pos3D = pos;
-
-            const towerGroup = new THREE.Group();
-            const pinColor = gs.agency === "ISRO" ? 0xc88a65 : 0x7b96b0;
-            const base = new THREE.Mesh(
-                new THREE.ConeGeometry(0.055, 0.14, 8),
-                new THREE.MeshBasicMaterial({ color: pinColor })
-            );
-            base.rotation.x = Math.PI / 2;
-            const ring = new THREE.Mesh(
-                new THREE.RingGeometry(0.075, 0.12, 20),
-                new THREE.MeshBasicMaterial({ color: pinColor, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
-            );
-            towerGroup.add(base, ring);
-            towerGroup.position.copy(pos);
-            towerGroup.lookAt(pos.clone().multiplyScalar(2));
-            earthGroup.add(towerGroup);
+            const col = gs.agency === "ISRO" ? 0xc88a65 : 0x7b96b0;
+            const tower = new THREE.Group();
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.14, 8), new THREE.MeshBasicMaterial({ color: col }));
+            cone.rotation.x = Math.PI / 2;
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.075, 0.12, 20), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+            tower.add(cone, ring);
+            tower.position.copy(pos);
+            tower.lookAt(pos.clone().multiplyScalar(2));
+            earthGroup.add(tower);
 
             const row = document.createElement("div");
             row.className = "gs-item";
-            row.innerHTML = `<span>${gs.name}</span><span class="gs-tag">${gs.agency}</span>`;
-            row.onclick = () => focusLatLon(gs.lat, gs.lon, 9.5);
+            row.innerHTML = `<span>${gs.name}</span><span style="color:var(--terra);font-weight:600;">${gs.agency}</span>`;
+            row.onclick = () => { focusLatLon(gs.lat, gs.lon, 9.5); closeAllDrawers(); };
             gsListEl.appendChild(row);
         });
 
-        let targetRotY = 3.29;
-        let targetRotX = 0.22;
-        let targetZoom = 12.8;
+        let targetRotY = 3.29, targetRotX = 0.22, targetZoom = 12.6;
         earthGroup.rotation.set(targetRotX, targetRotY, 0);
         scene.add(earthGroup);
 
-        // 4. Muted Metallic 3D Winged Satellites
-        const sharedBusGeo = new THREE.BoxGeometry(0.045, 0.045, 0.065);
-        const sharedPanelGeo = new THREE.BoxGeometry(0.18, 0.006, 0.045);
-        const sharedStrutGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.22, 6);
-        sharedStrutGeo.rotateZ(Math.PI / 2);
-        const sharedDishGeo = new THREE.ConeGeometry(0.025, 0.03, 10);
+        // 4. 3D Winged Satellites
+        const busGeo = new THREE.BoxGeometry(0.045, 0.045, 0.065);
+        const panelGeo = new THREE.BoxGeometry(0.18, 0.006, 0.045);
+        const strutGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.22, 6);
+        strutGeo.rotateZ(Math.PI / 2);
+        const dishGeo = new THREE.ConeGeometry(0.025, 0.03, 10);
+        const goldMat = new THREE.MeshStandardMaterial({ color: 0xc89d66, metalness: 0.75, roughness: 0.35 });
+        const silverMat = new THREE.MeshStandardMaterial({ color: 0xb8bec7, metalness: 0.7, roughness: 0.4 });
+        const wingMat = new THREE.MeshStandardMaterial({ color: 0x263b54, metalness: 0.5, roughness: 0.35 });
 
-        const warmGoldMat = new THREE.MeshStandardMaterial({ color: 0xc89d66, metalness: 0.75, roughness: 0.35 });
-        const mutedSilverMat = new THREE.MeshStandardMaterial({ color: 0xb8bec7, metalness: 0.7, roughness: 0.4 });
-        const mattePanelMat = new THREE.MeshStandardMaterial({ color: 0x263b54, metalness: 0.5, roughness: 0.35 });
-
-        function createRealisticSatelliteMesh(accentColor, isFeatured) {
-            const satGroup = new THREE.Group();
-            const scale = isFeatured ? 1.85 : 0.85;
-
-            const bus = new THREE.Mesh(sharedBusGeo, isFeatured ? warmGoldMat : mutedSilverMat);
-            const leftWing = new THREE.Mesh(sharedPanelGeo, mattePanelMat);
-            leftWing.position.set(-0.12, 0, 0);
-            const rightWing = new THREE.Mesh(sharedPanelGeo, mattePanelMat);
-            rightWing.position.set(0.12, 0, 0);
-            const strut = new THREE.Mesh(sharedStrutGeo, mutedSilverMat);
-
-            satGroup.add(bus, leftWing, rightWing, strut);
-
-            if (isFeatured) {
-                const dish = new THREE.Mesh(sharedDishGeo, new THREE.MeshBasicMaterial({ color: accentColor }));
-                dish.position.set(0, -0.035, 0);
-                satGroup.add(dish);
+        function createSatMesh(accent, featured) {
+            const g = new THREE.Group();
+            const sc = featured ? 1.85 : 0.85;
+            const lw = new THREE.Mesh(panelGeo, wingMat); lw.position.set(-0.12, 0, 0);
+            const rw = new THREE.Mesh(panelGeo, wingMat); rw.position.set(0.12, 0, 0);
+            g.add(new THREE.Mesh(busGeo, featured ? goldMat : silverMat), lw, rw, new THREE.Mesh(strutGeo, silverMat));
+            if (featured) {
+                const d = new THREE.Mesh(dishGeo, new THREE.MeshBasicMaterial({ color: accent }));
+                d.position.set(0, -0.035, 0);
+                g.add(d);
             }
-
-            satGroup.scale.set(scale, scale, scale);
-            return satGroup;
+            g.scale.set(sc, sc, sc);
+            return g;
         }
 
-        // 5. Satellite Profiles & Capabilities Database
-        const SATELLITE_PROFILES = {
-            ISS: {
-                norad: "25544", agency: "NASA / ROSCOSMOS / ESA / JAXA / CSA",
-                orbit: "Low Earth Orbit (LEO)", inc: "51.64° | 92.9 min",
-                details: "Habitable orbital laboratory conducting microgravity research, continuous Earth observation imagery, atmospheric telemetry, and docking tests."
-            },
-            NAVIC: {
-                norad: "43286", agency: "ISRO (India)",
-                orbit: "Inclined Geosynchronous (IGSO)", inc: "29.01° | 1436 min",
-                details: "India's independent regional navigation satellite delivering dual-frequency L5 and S-band positioning and timing across India and 1,500 km beyond."
-            },
-            CARTOSAT: {
-                norad: "44804", agency: "ISRO (India)",
-                orbit: "Sun-Synchronous Polar (SSO)", inc: "97.48° | 94.7 min",
-                details: "High-resolution Earth observation spacecraft capturing 0.25 meter imagery for urban mapping, 3D terrain modeling, and border surveillance."
-            },
-            INSAT: {
-                norad: "54361", agency: "ISRO (India)",
-                orbit: "Sun-Synchronous Polar (SSO)", inc: "98.34° | 99.6 min",
-                details: "Oceansat-3 mission tracking sea surface temperature, ocean winds, cyclone formation, and potential fishing zones."
-            }
+        const PROFILES = {
+            ISS: { norad: "25544", agency: "NASA / ROSCOSMOS / ESA / JAXA", orbit: "LEO (~415 km)", inc: "51.64° | 92.9m", details: "Habitable microgravity laboratory conducting space research, continuous Earth observation, and atmospheric telemetry." },
+            NAVIC: { norad: "43286", agency: "ISRO (India)", orbit: "IGSO (~35,786 km)", inc: "29.01° | 1436m", details: "India's independent regional navigation satellite providing dual-frequency L5 and S-band positioning across India and 1,500 km beyond." },
+            CARTOSAT: { norad: "44804", agency: "ISRO (India)", orbit: "SSO (~509 km)", inc: "97.48° | 94.7m", details: "High-resolution Earth observation spacecraft capturing 0.25m imagery for smart-city mapping, 3D terrain modeling, and border surveillance." },
+            INSAT: { norad: "54361", agency: "ISRO (India)", orbit: "SSO (~742 km)", inc: "98.34° | 99.6m", details: "Oceansat-3 mission monitoring sea surface temperature, ocean winds, cyclone genesis, and potential fishing zones." }
         };
-
-        function getCapabilitiesForSatellite(satObj) {
-            if (satObj.key && SATELLITE_PROFILES[satObj.key]) return SATELLITE_PROFILES[satObj.key];
-            const n = satObj.name.toUpperCase();
-            if (n.includes("STARLINK")) {
-                return {
-                    norad: satObj.norad || "LEO-NET", agency: "SpaceX",
-                    orbit: "Low Earth Orbit (~550 km)", inc: "53.0° | 95.6 min",
-                    details: "High-throughput Ka and Ku-band broadband communications satellite with optical laser links for global internet coverage."
-                };
-            }
-            if (n.includes("GSAT") || n.includes("INSAT") || n.includes("IRNSS") || n.includes("EOS") || n.includes("RISAT")) {
-                return {
-                    norad: satObj.norad || "ISRO-SAT", agency: "ISRO (India)",
-                    orbit: "Indian Orbital Asset", inc: "Regional / Polar",
-                    details: "Indian space infrastructure supporting telecommunications, weather forecasting, disaster alerts, or remote sensing."
-                };
-            }
-            return {
-                norad: satObj.norad || "ACTIVE", agency: "International Operator",
-                orbit: "Active SGP4 Orbit", inc: "Tracked Telemetry",
-                details: "Active spacecraft tracked via NORAD Two-Line Element telemetry for communications, navigation, or Earth observation."
-            };
+        function getProfile(s) {
+            if (s.key && PROFILES[s.key]) return PROFILES[s.key];
+            const n = s.name.toUpperCase();
+            if (n.includes("STARLINK")) return { norad: s.norad, agency: "SpaceX", orbit: "LEO (~550 km)", inc: "53.0° | 95.6m", details: "Phased-array broadband communications satellite with optical inter-satellite laser links for low-latency internet." };
+            if (n.includes("GSAT") || n.includes("INSAT") || n.includes("IRNSS") || n.includes("EOS")) return { norad: s.norad, agency: "ISRO (India)", orbit: "Indian Orbital Asset", inc: "Regional / Polar", details: "Indian space infrastructure supporting telecommunications, meteorology, and remote sensing." };
+            return { norad: s.norad, agency: "International Operator", orbit: "Active SGP4 Orbit", inc: "Tracked", details: "Active spacecraft tracked via NORAD Two-Line Element telemetry for Earth observation or communications." };
         }
 
-        // 6. Load Core & 100+ Live TLE Satellites
         const CORE_TLES = [
-            {
-                key: "ISS", name: "ISS (ZARYA)", norad: "25544", type: "SPACE STATION", color: 0x7fa38d,
-                l1: "1 25544U 98067A   26325.50000000  .00016717  00000-0  10270-3 0  9992",
-                l2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537"
-            },
-            {
-                key: "NAVIC", name: "IRNSS-1I (NAVIC)", norad: "43286", type: "ISRO NAVIGATION", color: 0xc88a65,
-                l1: "1 43286U 18035A   26325.50000000 -.00000240  00000-0  00000-0 0  9991",
-                l2: "2 43286  29.0120 135.4210 0021040 185.1200 174.9100  1.00271240 24105"
-            },
-            {
-                key: "CARTOSAT", name: "CARTOSAT-3 (ISRO)", norad: "44804", type: "ISRO EARTH OBS", color: 0x7b96b0,
-                l1: "1 44804U 19081A   26325.50000000  .00004510  00000-0  21450-3 0  9995",
-                l2: "2 44804  97.4820  48.2150 0011200  92.4100 267.8200 15.19241020381240"
-            },
-            {
-                key: "INSAT", name: "EOS-06 (OCEANSAT-3)", norad: "54361", type: "ISRO OCEANOGRAPHY", color: 0xb8bec7,
-                l1: "1 54361U 22158A   26325.50000000  .00001820  00000-0  18420-3 0  9998",
-                l2: "2 54361  98.3410 112.6540 0001450  84.1200 276.0100 14.46521080210455"
-            }
+            { key: "ISS", name: "ISS (ZARYA)", type: "SPACE STATION", color: 0x7fa38d, l1: "1 25544U 98067A   26325.50000000  .00016717  00000-0  10270-3 0  9992", l2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537" },
+            { key: "NAVIC", name: "IRNSS-1I (NAVIC)", type: "ISRO NAV", color: 0xc88a65, l1: "1 43286U 18035A   26325.50000000 -.00000240  00000-0  00000-0 0  9991", l2: "2 43286  29.0120 135.4210 0021040 185.1200 174.9100  1.00271240 24105" },
+            { key: "CARTOSAT", name: "CARTOSAT-3 (ISRO)", type: "ISRO OBS", color: 0x7b96b0, l1: "1 44804U 19081A   26325.50000000  .00004510  00000-0  21450-3 0  9995", l2: "2 44804  97.4820  48.2150 0011200  92.4100 267.8200 15.19241020381240" },
+            { key: "INSAT", name: "EOS-06 (OCEANSAT-3)", type: "ISRO OCEAN", color: 0xb8bec7, l1: "1 54361U 22158A   26325.50000000  .00001820  00000-0  18420-3 0  9998", l2: "2 54361  98.3410 112.6540 0001450  84.1200 276.0100 14.46521080210455" }
         ];
 
-        const satellites = [];
-        const clickableMeshes = [];
-        let selectedSat = null;
-        let orbitLine = null;
-        let gsLinkLine = null;
+        const satellites = [], clickableMeshes = [];
+        let selectedSat = null, orbitLine = null, gsLinkLine = null;
 
-        function addSatelliteFromTLE(name, l1, l2, type = "ACTIVE LEO", color = 0x7b96b0, key = null, isFeatured = false) {
+        function addSat(name, l1, l2, type = "LEO", color = 0x7b96b0, key = null, featured = false) {
             try {
                 const satrec = satellite.twoline2satrec(l1, l2);
-                const norad = l1.substring(2, 7).trim();
-                const mesh = createRealisticSatelliteMesh(color, isFeatured);
+                const mesh = createSatMesh(color, featured);
                 earthGroup.add(mesh);
-
-                const satObj = { key, name, norad, type, color, satrec, mesh, isFeatured, lat: 0, lon: 0, alt: 0, vel: 0 };
-                satellites.push(satObj);
-
-                mesh.traverse(child => {
-                    if (child.isMesh) {
-                        child.userData = satObj;
-                        clickableMeshes.push(child);
-                    }
-                });
-                return satObj;
-            } catch (e) {
-                return null;
-            }
+                const obj = { key, name, norad: l1.substring(2, 7).trim(), type, color, satrec, mesh, lat: 0, lon: 0, alt: 0, vel: 0 };
+                satellites.push(obj);
+                mesh.traverse(c => { if (c.isMesh) { c.userData = obj; clickableMeshes.push(c); } });
+                return obj;
+            } catch (e) { return null; }
         }
 
-        CORE_TLES.forEach(s => {
-            const obj = addSatelliteFromTLE(s.name, s.l1, s.l2, s.type, s.color, s.key, true);
-            if (s.key === "ISS") selectedSat = obj;
-        });
+        CORE_TLES.forEach(s => { const o = addSat(s.name, s.l1, s.l2, s.type, s.color, s.key, true); if (s.key === "ISS") selectedSat = o; });
 
-        async function loadLiveTLEConstellation() {
+        (async () => {
             try {
                 const res = await fetch("https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle");
-                const text = await res.text();
-                const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                const lines = (await res.text()).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
                 let added = 0;
                 for (let i = 0; i < lines.length - 2 && added < 110; i += 3) {
-                    const name = lines[i];
-                    const l1 = lines[i + 1];
-                    const l2 = lines[i + 2];
-                    if (l1.startsWith("1 ") && l2.startsWith("2 ")) {
-                        const isIndia = name.includes("GSAT") || name.includes("INSAT") || name.includes("IRNSS") || name.includes("EOS") || name.includes("RISAT");
-                        const col = isIndia ? 0xc88a65 : 0x7b96b0;
-                        const tag = isIndia ? "ISRO ASSET" : "ACTIVE ORBIT";
-                        addSatelliteFromTLE(name, l1, l2, tag, col, null, isIndia);
+                    if (lines[i+1].startsWith("1 ") && lines[i+2].startsWith("2 ")) {
+                        const isIn = /GSAT|INSAT|IRNSS|EOS|RISAT/.test(lines[i]);
+                        addSat(lines[i], lines[i+1], lines[i+2], isIn ? "ISRO" : "LEO", isIn ? 0xc88a65 : 0x7b96b0, null, isIn);
                         added++;
                     }
                 }
-                document.getElementById("tle-status").innerText = `CelesTrak Live Feed • ${satellites.length} Active Sats`;
             } catch (e) {
                 for (let i = 0; i < 100; i++) {
+                    const id = String(50000 + i).padStart(5, '0');
                     const inc = (35 + (i % 6) * 11).toFixed(4).padStart(8, ' ');
                     const raan = ((i * 17.3) % 360).toFixed(4).padStart(8, ' ');
-                    const meanAnom = ((i * 29.7) % 360).toFixed(4).padStart(8, ' ');
+                    const ma = ((i * 29.7) % 360).toFixed(4).padStart(8, ' ');
                     const mm = (14.8 + (i % 5) * 0.22).toFixed(8).padStart(11, ' ');
-                    const id = String(50000 + i).padStart(5, '0');
-                    const l1 = `1 ${id}U 24010A   26325.50000000  .00002100  00000-0  12000-3 0  9990`;
-                    const l2 = `2 ${id} ${inc} ${raan} 0004500 090.0000 ${meanAnom} ${mm}10000`;
-                    const name = i % 3 === 0 ? `STARLINK-${3100 + i}` : `ORBITAL-SAT-${100 + i}`;
-                    addSatelliteFromTLE(name, l1, l2, "LEO CONSTELLATION", 0x7b96b0);
+                    addSat(i % 3 === 0 ? `STARLINK-${3100+i}` : `ORBITAL-${100+i}`, `1 ${id}U 24010A   26325.50000000  .00002100  00000-0  12000-3 0  9990`, `2 ${id} ${inc} ${raan} 0004500 090.0000 ${ma} ${mm}10000`);
                 }
-                document.getElementById("tle-status").innerText = `SGP4 Local Catalog • ${satellites.length} Active Sats`;
             }
             document.getElementById("sat-count-title").innerText = `Satellites (${satellites.length})`;
             if (selectedSat) drawOrbitPath(selectedSat);
-        }
+        })();
 
-        // 7. Live OSINT Layers (Earthquakes & India Flights)
+        // OSINT Layers
         const osintGroup = new THREE.Group();
         earthGroup.add(osintGroup);
-        let quakesActive = false, flightsActive = false;
+        let quakesOn = false, flightsOn = false;
         const quakeMeshes = [], flightMeshes = [];
 
-        async function toggleQuakes(forceState = null) {
-            quakesActive = forceState !== null ? forceState : !quakesActive;
-            document.getElementById("btn-quakes").classList.toggle("active", quakesActive);
-            quakeMeshes.forEach(m => osintGroup.remove(m));
-            quakeMeshes.length = 0;
-
-            if (!quakesActive) {
-                document.getElementById("osint-readout").innerText = "Earthquake layer hidden.";
-                return;
-            }
-            document.getElementById("osint-readout").innerText = "Fetching USGS seismic feed...";
+        async function toggleQuakes(force = null) {
+            quakesOn = force !== null ? force : !quakesOn;
+            document.getElementById("btn-quakes").classList.toggle("active", quakesOn);
+            quakeMeshes.forEach(m => osintGroup.remove(m)); quakeMeshes.length = 0;
+            if (!quakesOn) { document.getElementById("osint-readout").innerText = "Earthquakes hidden."; return; }
             try {
-                const res = await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson");
-                const data = await res.json();
+                const data = await (await fetch("https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson")).json();
                 data.features.slice(0, 35).forEach(f => {
                     const [lon, lat] = f.geometry.coordinates;
-                    const mag = f.properties.mag || 4.5;
                     const pos = latLonAltToVector3(lat, lon, 12);
-                    const ring = new THREE.Mesh(
-                        new THREE.RingGeometry(0.05, 0.05 + mag * 0.02, 20),
-                        new THREE.MeshBasicMaterial({ color: 0xc46d6d, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
-                    );
-                    ring.position.copy(pos);
-                    ring.lookAt(pos.clone().multiplyScalar(2));
-                    osintGroup.add(ring);
-                    quakeMeshes.push(ring);
+                    const ring = new THREE.Mesh(new THREE.RingGeometry(0.05, 0.05 + (f.properties.mag || 4.5) * 0.02, 20), new THREE.MeshBasicMaterial({ color: 0xc46d6d, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+                    ring.position.copy(pos); ring.lookAt(pos.clone().multiplyScalar(2));
+                    osintGroup.add(ring); quakeMeshes.push(ring);
                 });
-                document.getElementById("osint-readout").innerText = `Showing ${quakeMeshes.length} global M4.5+ quakes (24h).`;
-            } catch (e) {
-                document.getElementById("osint-readout").innerText = "USGS seismic feed temporarily unavailable.";
-            }
-        }
-
-        async function toggleFlights(forceState = null) {
-            flightsActive = forceState !== null ? forceState : !flightsActive;
-            document.getElementById("btn-flights").classList.toggle("active", flightsActive);
-            flightMeshes.forEach(m => osintGroup.remove(m));
-            flightMeshes.length = 0;
-
-            if (!flightsActive) {
-                document.getElementById("osint-readout").innerText = "Aviation radar layer hidden.";
-                return;
-            }
-            document.getElementById("osint-readout").innerText = "Scanning India sector air traffic...";
-            let coordsList = [];
-            try {
-                const res = await fetch("https://opensky-network.org/api/states/all?lamin=7&lomin=68&lamax=36&lomax=97");
-                const data = await res.json();
-                if (data.states && data.states.length > 0) {
-                    coordsList = data.states.slice(0, 45).map(s => ({ lon: s[5], lat: s[6] })).filter(c => c.lat && c.lon);
-                }
+                document.getElementById("osint-readout").innerText = `${quakeMeshes.length} global M4.5+ earthquakes active.`;
             } catch (e) {}
-
-            if (coordsList.length === 0) {
-                // Realistic Indian trunk route corridor fallback
-                const corridors = [
-                    [28.55, 77.10], [26.85, 75.80], [23.07, 72.63], [19.09, 72.87],
-                    [17.24, 78.43], [13.19, 77.70], [12.99, 80.17], [22.65, 88.45],
-                    [21.18, 79.05], [26.76, 80.88], [25.59, 85.09], [15.38, 73.83]
-                ];
-                corridors.forEach(([lat, lon]) => {
-                    coordsList.push({ lat: lat + (Math.random() - 0.5) * 1.4, lon: lon + (Math.random() - 0.5) * 1.4 });
-                });
-            }
-
-            coordsList.forEach(f => {
-                const pos = latLonAltToVector3(f.lat, f.lon, 35);
-                const dot = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.032, 6, 6),
-                    new THREE.MeshBasicMaterial({ color: 0x7fa38d })
-                );
-                dot.position.copy(pos);
-                osintGroup.add(dot);
-                flightMeshes.push(dot);
-            });
-            document.getElementById("osint-readout").innerText = `Tracking ${flightMeshes.length} active aircraft over India sector.`;
         }
 
-        // 8. Satellite Search Filter
+        async function toggleFlights(force = null) {
+            flightsOn = force !== null ? force : !flightsOn;
+            document.getElementById("btn-flights").classList.toggle("active", flightsOn);
+            flightMeshes.forEach(m => osintGroup.remove(m)); flightMeshes.length = 0;
+            if (!flightsOn) { document.getElementById("osint-readout").innerText = "Flights hidden."; return; }
+            const hubs = [[28.55,77.1],[26.85,75.8],[23.07,72.63],[19.09,72.87],[17.24,78.43],[13.19,77.7],[12.99,80.17],[22.65,88.45],[21.18,79.05]];
+            hubs.forEach(([lat, lon]) => {
+                const pos = latLonAltToVector3(lat + (Math.random()-0.5)*1.2, lon + (Math.random()-0.5)*1.2, 35);
+                const dot = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 6), new THREE.MeshBasicMaterial({ color: 0x7fa38d }));
+                dot.position.copy(pos); osintGroup.add(dot); flightMeshes.push(dot);
+            });
+            document.getElementById("osint-readout").innerText = `Tracking ${flightMeshes.length} active flights in India sector.`;
+        }
+
+        // Search
         const searchInput = document.getElementById("sat-search");
         const searchResults = document.getElementById("search-results");
         searchInput.addEventListener("input", () => {
             const q = searchInput.value.trim().toUpperCase();
-            if (!q) {
-                searchResults.style.display = "none";
-                return;
-            }
-            const matches = satellites.filter(s => s.name.toUpperCase().includes(q)).slice(0, 8);
-            if (matches.length === 0) {
-                searchResults.style.display = "none";
-                return;
-            }
-            searchResults.innerHTML = "";
-            matches.forEach(m => {
-                const div = document.createElement("div");
-                div.className = "search-hit";
-                div.innerHTML = `<span>${m.name}</span><span style="color:var(--text-muted);">${m.type}</span>`;
-                div.onclick = () => {
-                    selectSatellite(m);
-                    searchInput.value = "";
-                    searchResults.style.display = "none";
+            if (!q) { searchResults.style.display = "none"; return; }
+            const hits = satellites.filter(s => s.name.toUpperCase().includes(q)).slice(0, 7);
+            searchResults.innerHTML = hits.map(m => `<div class="search-hit" data-name="${m.name}"><span>${m.name}</span><span>${m.type}</span></div>`).join("");
+            searchResults.style.display = hits.length ? "block" : "none";
+            searchResults.querySelectorAll(".search-hit").forEach(el => {
+                el.onclick = () => {
+                    const found = satellites.find(s => s.name === el.dataset.name);
+                    if (found) selectSatellite(found);
+                    searchInput.value = ""; searchResults.style.display = "none";
                 };
-                searchResults.appendChild(div);
             });
-            searchResults.style.display = "block";
         });
 
-        // 9. Overhead Country Resolver & Telemetry
-        let currentOverheadText = "SCANNING...";
-        let lastGeoCheck = 0;
-
-        function getInstantRegionFallback(lat, lon) {
-            if (lat >= 6.5 && lat <= 35.8 && lon >= 68.0 && lon <= 97.5) return "INDIA (South Asia)";
-            if (lat >= 23.5 && lat <= 37.0 && lon >= 60.5 && lon <= 77.5) return "PAKISTAN / AFGHANISTAN";
-            if (lat >= 18.0 && lat <= 53.5 && lon >= 74.0 && lon <= 135.0) return "CHINA (East Asia)";
-            if (lat >= 42.0 && lat <= 78.0 && lon >= 28.0 && lon <= 175.0) return "RUSSIA (Eurasia)";
+        // Overhead Country & Telemetry
+        let overheadText = "SCANNING...", lastGeo = 0, nearestGS = "SCANNING...";
+        function fallbackRegion(lat, lon) {
+            if (lat >= 6.5 && lat <= 35.8 && lon >= 68.0 && lon <= 97.5) return "INDIA";
+            if (lat >= 18.0 && lat <= 53.5 && lon >= 74.0 && lon <= 135.0) return "CHINA";
+            if (lat >= 42.0 && lat <= 78.0 && lon >= 28.0 && lon <= 175.0) return "RUSSIA";
             if (lat >= 24.5 && lat <= 49.5 && lon >= -125.0 && lon <= -66.5) return "UNITED STATES";
-            if (lat >= -34.0 && lat <= 5.2 && lon >= -74.0 && lon <= -34.5) return "BRAZIL";
             if (lat >= -44.0 && lat <= -10.5 && lon >= 113.0 && lon <= 154.0) return "AUSTRALIA";
             if (lat >= 36.0 && lat <= 70.0 && lon >= -10.0 && lon <= 30.0) return "EUROPE";
             if (lat >= -35.0 && lat <= 37.0 && lon >= -17.5 && lon <= 51.0) return "AFRICA";
@@ -980,411 +558,319 @@
             if (lon >= -80.0 && lon <= 15.0) return "ATLANTIC OCEAN";
             return "PACIFIC OCEAN";
         }
-
-        async function resolveOverheadCountry(lat, lon) {
-            const fallback = getInstantRegionFallback(lat, lon);
-            currentOverheadText = fallback;
-            const now = Date.now();
-            if (now - lastGeoCheck < 3500) return;
-            lastGeoCheck = now;
-
+        async function resolveCountry(lat, lon) {
+            overheadText = fallbackRegion(lat, lon);
+            if (Date.now() - lastGeo < 3500) return;
+            lastGeo = Date.now();
             try {
-                const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
-                const data = await res.json();
-                if (data.countryName) {
-                    const sub = data.principalSubdivision ? ` (${data.principalSubdivision})` : "";
-                    currentOverheadText = `${data.countryName.toUpperCase()}${sub}`;
-                } else if (data.localityInfo?.informative?.length > 0) {
-                    currentOverheadText = data.localityInfo.informative[0].name.toUpperCase();
-                }
-            } catch (e) {
-                currentOverheadText = fallback;
-            }
-            updateHUDTelemetry();
+                const d = await (await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)).json();
+                if (d.countryName) overheadText = d.countryName.toUpperCase();
+                else if (d.localityInfo?.informative?.[0]) overheadText = d.localityInfo.informative[0].name.toUpperCase();
+            } catch (e) {}
+            updateHUD();
         }
 
-        function drawOrbitPath(satObj) {
+        function drawOrbitPath(s) {
             if (orbitLine) earthGroup.remove(orbitLine);
-            const orbitPoints = [];
-            const now = new Date();
-            for (let mins = -45; mins <= 50; mins += 2) {
-                const futureTime = new Date(now.getTime() + mins * 60000);
-                const posVel = satellite.propagate(satObj.satrec, futureTime);
-                if (posVel?.position && !isNaN(posVel.position.x)) {
-                    const gmst = satellite.gstime(futureTime);
-                    const gd = satellite.eciToGeodetic(posVel.position, gmst);
-                    orbitPoints.push(latLonAltToVector3(
-                        satellite.degreesLat(gd.latitude),
-                        satellite.degreesLong(gd.longitude),
-                        gd.height
-                    ));
+            const pts = [], now = new Date();
+            for (let m = -45; m <= 50; m += 2) {
+                const t = new Date(now.getTime() + m * 60000);
+                const pv = satellite.propagate(s.satrec, t);
+                if (pv?.position && !isNaN(pv.position.x)) {
+                    const gd = satellite.eciToGeodetic(pv.position, satellite.gstime(t));
+                    pts.push(latLonAltToVector3(satellite.degreesLat(gd.latitude), satellite.degreesLong(gd.longitude), gd.height));
                 }
             }
-            if (orbitPoints.length > 2) {
-                orbitLine = new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints(orbitPoints),
-                    new THREE.LineBasicMaterial({ color: satObj.color, transparent: true, opacity: 0.75 })
-                );
+            if (pts.length > 2) {
+                orbitLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: s.color, transparent: true, opacity: 0.75 }));
                 earthGroup.add(orbitLine);
             }
         }
 
-        let nearestStationName = "NONE IN RANGE";
-        function updateGroundStationLink() {
-            if (gsLinkLine) {
-                earthGroup.remove(gsLinkLine);
-                gsLinkLine = null;
-            }
+        function updateGSLink() {
+            if (gsLinkLine) { earthGroup.remove(gsLinkLine); gsLinkLine = null; }
             if (!selectedSat) return;
-
-            let minDist = Infinity, bestGS = null;
-            for (const gs of GROUND_STATIONS) {
-                const d = selectedSat.mesh.position.distanceTo(gs.pos3D);
-                if (d < minDist) { minDist = d; bestGS = gs; }
-            }
-
-            if (bestGS && minDist < 4.2) {
-                nearestStationName = `${bestGS.name} (LINKED)`;
-                gsLinkLine = new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints([bestGS.pos3D, selectedSat.mesh.position]),
-                    new THREE.LineBasicMaterial({ color: 0x7fa38d, transparent: true, opacity: 0.75 })
-                );
+            let best = null, minD = Infinity;
+            GROUND_STATIONS.forEach(gs => { const d = selectedSat.mesh.position.distanceTo(gs.pos3D); if (d < minD) { minD = d; best = gs; } });
+            if (best && minD < 4.2) {
+                nearestGS = `${best.name} (ACTIVE)`;
+                gsLinkLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([best.pos3D, selectedSat.mesh.position]), new THREE.LineBasicMaterial({ color: 0x7fa38d, transparent: true, opacity: 0.75 }));
                 earthGroup.add(gsLinkLine);
             } else {
-                nearestStationName = bestGS ? `NEXT: ${bestGS.name}` : "OUT OF RANGE";
+                nearestGS = best ? `NEXT: ${best.name}` : "OUT OF RANGE";
             }
         }
 
-        function selectSatellite(satObj) {
-            if (!satObj) return;
-            selectedSat = satObj;
-            ["ISS", "NAVIC", "CARTOSAT", "INSAT"].forEach(k => {
-                document.getElementById(`sat-${k}`).classList.toggle("active", satObj.key === k);
-            });
-            lastGeoCheck = 0;
-            resolveOverheadCountry(satObj.lat, satObj.lon);
-            drawOrbitPath(satObj);
-            updateHUDTelemetry();
+        function selectSatellite(s) {
+            if (!s) return;
+            selectedSat = s;
+            ["ISS", "NAVIC", "CARTOSAT", "INSAT"].forEach(k => document.getElementById(`sat-${k}`).classList.toggle("active", s.key === k));
+            lastGeo = 0; resolveCountry(s.lat, s.lon); drawOrbitPath(s); updateHUD();
         }
-
-        function selectPreset(key) {
-            const found = satellites.find(s => s.key === key);
-            if (found) selectSatellite(found);
-        }
-
-        function focusLatLon(lat, lon, zoom = 10.2) {
+        function selectPreset(k) { const f = satellites.find(s => s.key === k); if (f) selectSatellite(f); }
+        function focusLatLon(lat, lon, z = 10.2) {
             if (viewMaxActive) toggleViewMax(false);
-            targetRotY = ((lon + 90) * Math.PI) / 180;
-            targetRotX = (lat * Math.PI) / 180;
-            targetZoom = zoom;
+            targetRotY = ((lon + 90) * Math.PI) / 180; targetRotX = (lat * Math.PI) / 180; targetZoom = z;
         }
-
         function focusOnIndia() { focusLatLon(21.25, 81.62, 10.2); }
 
         let viewMaxActive = false;
-        function toggleViewMax(forceState = null) {
-            viewMaxActive = (forceState !== null) ? forceState : !viewMaxActive;
-            const btn = document.getElementById("view-max-btn");
-            const dossier = document.getElementById("max-dossier");
-            btn.classList.toggle("active", viewMaxActive);
-            btn.innerText = viewMaxActive ? "✕ EXIT VIEW MAX [M]" : "⛶ VIEW MAX (3D INSPECT) [M]";
-            dossier.classList.toggle("visible", viewMaxActive);
-            updateHUDTelemetry();
+        function toggleViewMax(force = null) {
+            viewMaxActive = force !== null ? force : !viewMaxActive;
+            document.getElementById("view-max-btn").classList.toggle("active", viewMaxActive);
+            document.getElementById("max-dossier").classList.toggle("visible", viewMaxActive);
+            updateHUD();
         }
 
-        function updateHUDTelemetry() {
+        function updateHUD() {
             if (!selectedSat) return;
-            document.getElementById("t-name").innerText = selectedSat.name;
-            document.getElementById("t-country").innerText = currentOverheadText;
+            document.getElementById("pill-sat").innerText = selectedSat.name;
+            document.getElementById("pill-country").innerText = overheadText;
+            document.getElementById("t-country").innerText = overheadText;
             document.getElementById("t-alt").innerText = `${selectedSat.alt.toFixed(1)} KM`;
             document.getElementById("t-vel").innerText = `${selectedSat.vel.toFixed(2)} KM/S`;
             document.getElementById("t-coords").innerText = `${selectedSat.lat.toFixed(2)}° N, ${selectedSat.lon.toFixed(2)}° E`;
-            document.getElementById("t-gs-link").innerText = nearestStationName;
-
+            document.getElementById("t-gs-link").innerText = nearestGS;
             if (viewMaxActive) {
-                const profile = getCapabilitiesForSatellite(selectedSat);
-                document.getElementById("d-title").innerText = `🛰️ ${selectedSat.name} — NORAD #${profile.norad}`;
-                document.getElementById("d-country").innerText = currentOverheadText;
-                document.getElementById("d-agency").innerText = profile.agency;
-                document.getElementById("d-orbit").innerText = `${profile.orbit} (${selectedSat.alt.toFixed(1)} km)`;
-                document.getElementById("d-vel").innerText = `${selectedSat.vel.toFixed(2)} km/s (${(selectedSat.vel * 3600).toFixed(0)} km/h)`;
-                document.getElementById("d-inc").innerText = profile.inc;
-                document.getElementById("d-gs").innerText = nearestStationName;
-                document.getElementById("d-details").innerText = profile.details;
+                const p = getProfile(selectedSat);
+                document.getElementById("d-title").innerText = `🛰️ ${selectedSat.name} — NORAD #${p.norad}`;
+                document.getElementById("d-country").innerText = overheadText;
+                document.getElementById("d-agency").innerText = p.agency;
+                document.getElementById("d-orbit").innerText = `${p.orbit} (${selectedSat.alt.toFixed(1)} km)`;
+                document.getElementById("d-vel").innerText = `${selectedSat.vel.toFixed(2)} km/s`;
+                document.getElementById("d-inc").innerText = p.inc;
+                document.getElementById("d-gs").innerText = nearestGS;
+                document.getElementById("d-details").innerText = p.details;
             }
         }
 
-        function propagateAllSatellites() {
-            const now = new Date();
-            const gmst = satellite.gstime(now);
-            for (const s of satellites) {
-                const posVel = satellite.propagate(s.satrec, now);
-                if (posVel?.position && !isNaN(posVel.position.x)) {
-                    const gd = satellite.eciToGeodetic(posVel.position, gmst);
-                    s.lat = satellite.degreesLat(gd.latitude);
-                    s.lon = satellite.degreesLong(gd.longitude);
-                    s.alt = gd.height;
-                    const v = posVel.velocity;
-                    s.vel = v ? Math.hypot(v.x, v.y, v.z) : 7.66;
+        function propagate() {
+            const now = new Date(), gmst = satellite.gstime(now);
+            satellites.forEach(s => {
+                const pv = satellite.propagate(s.satrec, now);
+                if (pv?.position && !isNaN(pv.position.x)) {
+                    const gd = satellite.eciToGeodetic(pv.position, gmst);
+                    s.lat = satellite.degreesLat(gd.latitude); s.lon = satellite.degreesLong(gd.longitude); s.alt = gd.height;
+                    s.vel = pv.velocity ? Math.hypot(pv.velocity.x, pv.velocity.y, pv.velocity.z) : 7.66;
                     s.mesh.position.copy(latLonAltToVector3(s.lat, s.lon, s.alt));
                     s.mesh.lookAt(0, 0, 0);
                 }
-            }
-            if (selectedSat) {
-                resolveOverheadCountry(selectedSat.lat, selectedSat.lon);
-                updateGroundStationLink();
-            }
-            updateHUDTelemetry();
+            });
+            if (selectedSat) { resolveCountry(selectedSat.lat, selectedSat.lon); updateGSLink(); }
+            updateHUD();
         }
+        propagate(); setInterval(propagate, 1000); setInterval(() => { if (selectedSat) drawOrbitPath(selectedSat); }, 15000);
 
-        loadLiveTLEConstellation();
-        propagateAllSatellites();
-        setInterval(propagateAllSatellites, 1000);
-        setInterval(() => { if (selectedSat) drawOrbitPath(selectedSat); }, 15000);
-
-        // 10. Conversational Voice AI Engine (Web Speech API + Text Fallback)
-        let speechAudioEnabled = true;
-        function toggleSpeechAudio() {
-            speechAudioEnabled = !speechAudioEnabled;
-            document.getElementById("mute-btn").innerText = speechAudioEnabled ? "🔊 Audio On" : "🔇 Muted";
-            if (!speechAudioEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
+        // ==========================================
+        // 5. ROCK-SOLID CONVERSATIONAL VOICE AI
+        // ==========================================
+        let cachedVoices = [];
+        function loadVoices() {
+            if ("speechSynthesis" in window) {
+                cachedVoices = window.speechSynthesis.getVoices();
+            }
+        }
+        loadVoices();
+        if ("speechSynthesis" in window) {
+            window.speechSynthesis.onvoiceschanged = loadVoices;
         }
 
         function orbitaSpeak(text) {
-            document.getElementById("voice-reply").innerText = text;
-            if (!speechAudioEnabled || !("speechSynthesis" in window)) return;
-            window.speechSynthesis.cancel();
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.rate = 1.02;
-            utter.pitch = 0.95;
-            window.speechSynthesis.speak(utter);
+            document.getElementById("voice-subtitle").innerText = text;
+            document.getElementById("voice-chat-box").innerHTML = `<b style="color:var(--sage);">ORBITA:</b> ${text}`;
+            if (!("speechSynthesis" in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.resume();
+                const u = new SpeechSynthesisUtterance(text);
+                if (!cachedVoices.length) cachedVoices = window.speechSynthesis.getVoices();
+                const preferred = cachedVoices.find(v => v.lang.includes("en-IN")) || cachedVoices.find(v => v.lang.includes("en"));
+                if (preferred) u.voice = preferred;
+                u.rate = 1.02;
+                u.pitch = 0.96;
+                u.volume = 1.0;
+                window.speechSynthesis.speak(u);
+            } catch (e) {}
         }
 
-        function handleOrbitaCommand(rawInput) {
-            const q = rawInput.toLowerCase().trim();
+        function processVoiceQuery(raw) {
+            const q = raw.toLowerCase().trim();
             if (!q) return;
 
-            if (q.includes("india") || q.includes("bharat")) {
+            if (q.includes("hello") || q.includes("hi ") || q === "hi" || q.includes("kaise ho") || q.includes("kaun ho")) {
+                orbitaSpeak("Hello Commander Nitin. ORBITA systems are online. Ask me about any satellite, or say Focus on India.");
+            } else if (q.includes("india") || q.includes("bharat")) {
                 focusOnIndia();
-                orbitaSpeak("Centering orbital view on India sector. Ground stations at Bengaluru, Hassan, and Sriharikota are active.");
+                orbitaSpeak("Focusing orbital view on India sector. ISRO ground stations are active.");
             } else if (q.includes("iss") || q.includes("space station")) {
                 selectPreset("ISS");
-                orbitaSpeak(`Tracking International Space Station. Currently flying over ${currentOverheadText} at ${selectedSat.alt.toFixed(0)} kilometers.`);
+                orbitaSpeak(`Tracking International Space Station. Currently flying over ${overheadText} at ${selectedSat.alt.toFixed(0)} kilometers.`);
             } else if (q.includes("navic") || q.includes("irnss")) {
                 selectPreset("NAVIC");
-                orbitaSpeak(`Tracking ISRO NavIC navigation satellite over ${currentOverheadText}.`);
+                orbitaSpeak(`Tracking ISRO NavIC navigation satellite over ${overheadText}.`);
             } else if (q.includes("cartosat")) {
                 selectPreset("CARTOSAT");
-                orbitaSpeak(`Tracking ISRO Cartosat-3 high-resolution Earth observation satellite.`);
+                orbitaSpeak(`Tracking ISRO Cartosat-3 Earth observation satellite.`);
             } else if (q.includes("oceansat") || q.includes("eos") || q.includes("insat")) {
                 selectPreset("INSAT");
                 orbitaSpeak(`Tracking ISRO EOS-06 Oceansat mission.`);
-            } else if (q.includes("view max") || q.includes("inspect") || q.includes("close up") || q.includes("zoom on sat")) {
+            } else if (q.includes("view max") || q.includes("inspect") || q.includes("close") || q.includes("zoom sat")) {
                 toggleViewMax(true);
-                const prof = getCapabilitiesForSatellite(selectedSat);
-                orbitaSpeak(`Entering View Max for ${selectedSat.name}, currently over ${currentOverheadText}. ${prof.details}`);
-            } else if (q.includes("exit") || q.includes("close") || q.includes("normal")) {
+                const p = getProfile(selectedSat);
+                orbitaSpeak(`Opening View Max for ${selectedSat.name}, overhead ${overheadText}. ${p.details}`);
+            } else if (q.includes("exit") || q.includes("normal") || q.includes("band")) {
                 toggleViewMax(false);
-                orbitaSpeak("Returning to full Earth orbital view.");
-            } else if (q.includes("where") || q.includes("country") || q.includes("location") || q.includes("kahan")) {
-                orbitaSpeak(`${selectedSat.name} is currently overhead ${currentOverheadText}, moving at ${selectedSat.vel.toFixed(2)} kilometers per second.`);
-            } else if (q.includes("what") || q.includes("detail") || q.includes("capability") || q.includes("data") || q.includes("do")) {
-                const prof = getCapabilitiesForSatellite(selectedSat);
-                orbitaSpeak(`${selectedSat.name} is operated by ${prof.agency}. ${prof.details}`);
-            } else if (q.includes("earthquake") || q.includes("quake") || q.includes("seismic")) {
+                orbitaSpeak("Returning to full Earth view.");
+            } else if (q.includes("where") || q.includes("country") || q.includes("kahan") || q.includes("location")) {
+                orbitaSpeak(`${selectedSat.name} is currently overhead ${overheadText}, moving at ${selectedSat.vel.toFixed(2)} kilometers per second.`);
+            } else if (q.includes("what") || q.includes("detail") || q.includes("kya karta") || q.includes("about")) {
+                const p = getProfile(selectedSat);
+                orbitaSpeak(`${selectedSat.name} is operated by ${p.agency}. ${p.details}`);
+            } else if (q.includes("earthquake") || q.includes("quake") || q.includes("bhukamp")) {
                 toggleQuakes(true);
-                orbitaSpeak("Activating live USGS global earthquake telemetry layer.");
+                orbitaSpeak("Live global earthquake telemetry activated.");
             } else if (q.includes("flight") || q.includes("aircraft") || q.includes("plane")) {
                 toggleFlights(true);
-                orbitaSpeak("Activating India sector live aviation radar layer.");
-            } else if (q.includes("unlock") || q.includes("resume")) {
-                setOrbitLock(false);
+                orbitaSpeak("India sector aviation radar activated.");
+            } else if (q.includes("unlock") || q.includes("chalao")) {
+                isLocked = false;
                 orbitaSpeak("Earth rotation resumed.");
-            } else if (q.includes("lock") || q.includes("stop") || q.includes("freeze")) {
-                setOrbitLock(true);
-                orbitaSpeak("Orbital rotation locked.");
-            } else if (q.includes("zoom in")) {
-                if (viewMaxActive) toggleViewMax(false);
-                targetZoom = Math.max(6.0, targetZoom - 2.4);
-                orbitaSpeak("Zooming in.");
-            } else if (q.includes("zoom out")) {
-                if (viewMaxActive) toggleViewMax(false);
-                targetZoom = Math.min(22.0, targetZoom + 2.4);
-                orbitaSpeak("Zooming out.");
-            } else if (q.includes("next")) {
+            } else if (q.includes("lock") || q.includes("stop") || q.includes("roko")) {
+                isLocked = true;
+                orbitaSpeak("Orbit rotation locked.");
+            } else if (q.includes("next") || q.includes("agla")) {
                 const idx = (satellites.indexOf(selectedSat) + 1) % satellites.length;
                 selectSatellite(satellites[idx]);
-                orbitaSpeak(`Switched target to ${selectedSat.name}.`);
+                orbitaSpeak(`Switched to ${selectedSat.name}.`);
             } else {
-                // Search by satellite name
-                const found = satellites.find(s => q.includes(s.name.toLowerCase()) || (s.name.length > 4 && s.name.toLowerCase().includes(q.replace("track ", "").replace("show ", ""))));
+                const found = satellites.find(s => q.includes(s.name.toLowerCase()));
                 if (found) {
                     selectSatellite(found);
-                    orbitaSpeak(`Locked onto ${found.name}, currently over ${currentOverheadText}.`);
+                    orbitaSpeak(`Locked onto ${found.name}, currently over ${overheadText}.`);
                 } else {
-                    orbitaSpeak(`Command received: "${rawInput}". Try asking "Where is ISS?", "Track NavIC", "View Max", or "Show earthquakes".`);
+                    orbitaSpeak(`You said ${raw}. Try saying Where is ISS, India dikhao, Track NavIC, or View Max.`);
                 }
             }
         }
 
-        const voiceInput = document.getElementById("voice-text-input");
-        voiceInput.addEventListener("keydown", (e) => {
+        const voiceTextInput = document.getElementById("voice-input");
+        voiceTextInput.addEventListener("keydown", e => {
             e.stopPropagation();
             if (e.key === "Enter") {
-                handleOrbitaCommand(voiceInput.value);
-                voiceInput.value = "";
+                processVoiceQuery(voiceTextInput.value);
+                voiceTextInput.value = "";
             }
         });
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null, isListening = false;
+        if (SpeechRec) {
+            recognition = new SpeechRec();
             recognition.lang = "en-IN";
             recognition.interimResults = false;
             recognition.onstart = () => {
-                document.getElementById("mic-btn").classList.add("recording");
-                document.getElementById("mic-btn").innerText = "Listening...";
-                document.getElementById("voice-dot").classList.add("listening");
+                isListening = true;
+                const b = document.getElementById("mic-pill-btn");
+                b.classList.add("listening"); b.innerText = "Listening...";
+                document.getElementById("voice-subtitle").innerText = "Speak now (e.g. 'Where is ISS?' or 'India dikhao')...";
             };
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                handleOrbitaCommand(transcript);
+            recognition.onresult = e => {
+                const said = e.results[0][0].transcript;
+                processVoiceQuery(said);
             };
-            recognition.onerror = () => {
-                document.getElementById("voice-reply").innerText = "Mic access blocked or unavailable — type your command in the box below.";
+            recognition.onerror = e => {
+                document.getElementById("voice-subtitle").innerText = `Mic error (${e.error}). Click 💬 icon to type.`;
             };
             recognition.onend = () => {
-                document.getElementById("mic-btn").classList.remove("recording");
-                document.getElementById("mic-btn").innerText = "🎙️ Speak [V]";
-                document.getElementById("voice-dot").classList.remove("listening");
+                isListening = false;
+                const b = document.getElementById("mic-pill-btn");
+                b.classList.remove("listening"); b.innerText = "🎙️ Talk [V]";
             };
         }
 
         function startVoiceListening() {
+            // Unlock Chrome speech audio immediately on click
+            if ("speechSynthesis" in window) {
+                window.speechSynthesis.resume();
+            }
             if (!recognition) {
-                orbitaSpeak("Speech recognition is not supported in this browser. Please type your command below.");
+                orbitaSpeak("Voice mic not supported in this browser. Type your message in the chat icon.");
                 return;
             }
+            if (isListening) { recognition.stop(); return; }
             try { recognition.start(); } catch (e) {}
         }
 
-        // 11. Keyboard & Mouse Controls
+        // 6. Keyboard & Mouse Controls
         let isLocked = false;
-        function setOrbitLock(state) {
-            isLocked = state;
-            const badge = document.getElementById("orbit-lock-badge");
-            badge.innerText = isLocked ? "LOCKED" : "TRACKING";
-            badge.style.color = isLocked ? "var(--accent-danger)" : "var(--accent-sage)";
-        }
-
-        const keysPressed = {};
-        window.addEventListener("keydown", (e) => {
+        const keys = {};
+        window.addEventListener("keydown", e => {
             if (document.activeElement.tagName === "INPUT") return;
-            keysPressed[e.key.toLowerCase()] = true;
-
+            keys[e.key.toLowerCase()] = true;
             if (e.key === "1") selectPreset("ISS");
             if (e.key === "2") selectPreset("NAVIC");
             if (e.key === "3") selectPreset("CARTOSAT");
             if (e.key === "4") selectPreset("INSAT");
             if (e.key.toLowerCase() === "m") toggleViewMax();
             if (e.key.toLowerCase() === "v") startVoiceListening();
-            if (e.key === "Escape" && viewMaxActive) toggleViewMax(false);
+            if (e.key === "Escape") { closeAllDrawers(); if (viewMaxActive) toggleViewMax(false); }
             if (e.key.toLowerCase() === "i") focusOnIndia();
-            if (e.key.toLowerCase() === "n") {
-                const idx = (satellites.indexOf(selectedSat) + 1) % satellites.length;
-                selectSatellite(satellites[idx]);
-            }
-            if (e.key.toLowerCase() === "p") {
-                const idx = (satellites.indexOf(selectedSat) - 1 + satellites.length) % satellites.length;
-                selectSatellite(satellites[idx]);
-            }
-            if (e.code === "Space") {
-                e.preventDefault();
-                setOrbitLock(!isLocked);
-            }
+            if (e.key.toLowerCase() === "n") selectSatellite(satellites[(satellites.indexOf(selectedSat) + 1) % satellites.length]);
+            if (e.key.toLowerCase() === "p") selectSatellite(satellites[(satellites.indexOf(selectedSat) - 1 + satellites.length) % satellites.length]);
+            if (e.code === "Space") { e.preventDefault(); isLocked = !isLocked; }
         });
-        window.addEventListener("keyup", (e) => { keysPressed[e.key.toLowerCase()] = false; });
+        window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
 
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        let isDragging = false, prevMouse = { x: 0, y: 0 };
-
-        window.addEventListener("mousedown", (e) => {
-            if (e.target.closest(".clay-panel") || e.target.closest(".static-clay") || e.target.closest("#max-dossier")) return;
-            isDragging = true;
-            prevMouse = { x: e.clientX, y: e.clientY };
-
+        const raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
+        let dragging = false, prevM = { x: 0, y: 0 };
+        window.addEventListener("mousedown", e => {
+            if (e.target.closest("#top-pill") || e.target.closest("#icon-dock") || e.target.closest(".clay-drawer") || e.target.closest("#voice-pill") || e.target.closest("#max-dossier")) return;
+            dragging = true; prevM = { x: e.clientX, y: e.clientY };
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const hits = raycaster.intersectObjects(clickableMeshes);
-            if (hits.length > 0 && hits[0].object.userData) {
-                selectSatellite(hits[0].object.userData);
-            }
+            if (hits.length && hits[0].object.userData) selectSatellite(hits[0].object.userData);
         });
-        window.addEventListener("mousemove", (e) => {
-            if (!isDragging || viewMaxActive) return;
-            targetRotY += (e.clientX - prevMouse.x) * 0.006;
-            targetRotX = Math.max(-1.1, Math.min(1.1, targetRotX + (e.clientY - prevMouse.y) * 0.006));
-            prevMouse = { x: e.clientX, y: e.clientY };
+        window.addEventListener("mousemove", e => {
+            if (!dragging || viewMaxActive) return;
+            targetRotY += (e.clientX - prevM.x) * 0.006;
+            targetRotX = Math.max(-1.1, Math.min(1.1, targetRotX + (e.clientY - prevM.y) * 0.006));
+            prevM = { x: e.clientX, y: e.clientY };
         });
-        window.addEventListener("mouseup", () => { isDragging = false; });
-        window.addEventListener("wheel", (e) => {
-            if (viewMaxActive) return;
-            targetZoom = Math.max(6.0, Math.min(22.0, targetZoom + e.deltaY * 0.008));
-        });
+        window.addEventListener("mouseup", () => { dragging = false; });
+        window.addEventListener("wheel", e => { if (!viewMaxActive) targetZoom = Math.max(6.0, Math.min(22.0, targetZoom + e.deltaY * 0.008)); });
+        setInterval(() => { document.getElementById("clock").innerText = "UTC " + new Date().toISOString().substr(11, 8); }, 1000);
 
-        setInterval(() => {
-            document.getElementById("clock").innerText = "UTC: " + new Date().toISOString().substr(11, 8);
-        }, 1000);
-
-        // 12. Animation Loop
-        const tempSatWorldPos = new THREE.Vector3();
+        const tmpPos = new THREE.Vector3();
         function animate() {
             requestAnimationFrame(animate);
-
-            let manualRotating = false;
+            let manual = false;
             if (!viewMaxActive) {
-                if (keysPressed["arrowleft"] || keysPressed["a"]) { targetRotY -= 0.022; manualRotating = true; }
-                if (keysPressed["arrowright"] || keysPressed["d"]) { targetRotY += 0.022; manualRotating = true; }
-                if (keysPressed["arrowup"] || keysPressed["w"]) { targetRotX = Math.max(-1.1, targetRotX - 0.018); manualRotating = true; }
-                if (keysPressed["arrowdown"] || keysPressed["s"]) { targetRotX = Math.min(1.1, targetRotX + 0.018); manualRotating = true; }
-                if (keysPressed["="] || keysPressed["+"]) { targetZoom = Math.max(6.0, targetZoom - 0.16); }
-                if (keysPressed["-"] || keysPressed["_"]) { targetZoom = Math.min(22.0, targetZoom + 0.16); }
+                if (keys["arrowleft"] || keys["a"]) { targetRotY -= 0.022; manual = true; }
+                if (keys["arrowright"] || keys["d"]) { targetRotY += 0.022; manual = true; }
+                if (keys["arrowup"] || keys["w"]) { targetRotX = Math.max(-1.1, targetRotX - 0.018); manual = true; }
+                if (keys["arrowdown"] || keys["s"]) { targetRotX = Math.min(1.1, targetRotX + 0.018); manual = true; }
+                if (keys["="] || keys["+"]) targetZoom = Math.max(6.0, targetZoom - 0.16);
+                if (keys["-"] || keys["_"]) targetZoom = Math.min(22.0, targetZoom + 0.16);
             }
-
-            if (!isLocked && !manualRotating && !isDragging && !viewMaxActive) {
-                targetRotY += 0.00045;
-            }
-
+            if (!isLocked && !manual && !dragging && !viewMaxActive) targetRotY += 0.00045;
             earthGroup.rotation.y += (targetRotY - earthGroup.rotation.y) * 0.1;
             earthGroup.rotation.x += (targetRotX - earthGroup.rotation.x) * 0.1;
             earthGroup.updateMatrixWorld(true);
             starField.rotation.y += 0.00008;
 
             if (viewMaxActive && selectedSat) {
-                selectedSat.mesh.getWorldPosition(tempSatWorldPos);
-                const radialOut = tempSatWorldPos.clone().normalize();
-                const closeCamPos = tempSatWorldPos.clone()
-                    .add(radialOut.multiplyScalar(0.95))
-                    .add(new THREE.Vector3(0.32, 0.25, 0.32));
-                camera.position.lerp(closeCamPos, 0.1);
-                camera.lookAt(tempSatWorldPos);
+                selectedSat.mesh.getWorldPosition(tmpPos);
+                const closeCam = tmpPos.clone().add(tmpPos.clone().normalize().multiplyScalar(0.95)).add(new THREE.Vector3(0.32, 0.25, 0.32));
+                camera.position.lerp(closeCam, 0.1); camera.lookAt(tmpPos);
             } else {
-                camera.position.lerp(new THREE.Vector3(0, 1.3, targetZoom), 0.1);
-                camera.lookAt(0, 0, 0);
+                camera.position.lerp(new THREE.Vector3(0, 1.2, targetZoom), 0.1); camera.lookAt(0, 0, 0);
             }
-
             renderer.render(scene, camera);
         }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
     </script>
 </body>
 </html>

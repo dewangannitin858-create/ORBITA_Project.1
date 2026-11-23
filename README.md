@@ -38,17 +38,39 @@ The goal of **Project ORBITA** is to bridge Computer Vision, 3D Web Graphics, an
 
 ---
 
-## 🚧 Ongoing Project Status & Roadmap
+## 🗺️ Project Roadmap & Upgrade Phases
 
-This project is **currently under active development**.
+| Phase       | Focus Area                                    | Version | Status        |
+| :---        | :---                                          | :---    | :---          |
+| **Phase 1** | Core Foundation, Vision Engine & AR Prototype | `v1.0`  | ✅ Completed |
+| **Phase 2** | Real Orbital TLE Data & 360° Hand Controls    | `v2.0`  | 🚧 Up Next   |
+| **Phase 3** | JARVIS Voice Commands & Live OSINT Feeds      | `v3.0`  | ⏳ Planned   |
+| **Phase 4** | Zero-Lag Browser Vision & Public Deployment   | `v4.0`  | ⏳ Planned   |
 
+---
+
+### ✅ Phase 1: Core Foundation & AR Prototype (`v1.0`)
 - [x] Real-time Hand Gesture Recognition (OpenCV + MediaPipe)
-- [x] FastAPI WebSocket Bridge to 3D Three.js Globe
-- [x] AR Camera Background Overlay
-- [x] Live ISS API Integration & India Sector Satellites
-- [ ] Full TLE (Two-Line Element) Live Orbit Calculation for 100+ Satellites
-- [ ] Voice Command Integration (JARVIS-style assistant)
-- [ ] Cloud Deployment & Performance Optimization
+- [x] FastAPI WebSocket Bridge (`/ws`) to 3D Three.js Globe
+- [x] Live AR Camera Background Overlay (`/video_feed`)
+- [x] Live ISS API Integration & India Sector Satellites (`NAVIC-1G`, `CARTOSAT-3`, `INSAT-3D`)
+- [x] Gesture Controls (Zoom In/Out, Orbit Lock, Satellite Switching) + Keyboard Backup
+
+### 🚧 Phase 2: Real Orbital Data & Smart Tracking (`v2.0`)
+- [ ] Integrate real-time TLE data (`satellite.js` + CelesTrak) for 100+ live satellites (ISRO, Starlink, GPS)
+- [ ] Highlight active satellite's live orbit path & ground track on the globe
+- [ ] Add 360° hand-rotation gesture to spin the Earth freely
+- [ ] Add quick "Focus on India" gesture & smooth camera transitions
+
+### ⏳ Phase 3: JARVIS Voice & Live OSINT Feeds (`v3.0`)
+- [ ] Browser-based Voice Commands (Web Speech API — e.g., *"Orbita, track ISS"*, *"Lock Orbit"*)
+- [ ] Toggleable live OSINT layers (USGS Earthquake Alerts / OpenSky Live Flights)
+- [ ] Interactive search & filter HUD for satellites and countries
+
+### ⏳ Phase 4: Zero-Lag Architecture & Public Deployment (`v4.0`)
+- [ ] Migrate Hand Tracking from Python to Frontend (MediaPipe JS) for zero-lag browser webcam access
+- [ ] Performance optimization for low-end/CPU-only devices
+- [ ] Live public deployment on Vercel / GitHub Pages
 
 ---
 

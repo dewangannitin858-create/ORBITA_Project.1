@@ -13,39 +13,48 @@
 
 ---
 
-## 🖥️ How ORBITA Works (Interface Overview)
+## 🖥️ Interface & How It Works
 
 - **Clean Space Canvas:** Opens directly to a photorealistic 3D Earth with real continents, 8 active Ground Stations (ISRO, NASA, ESA, JAXA), and 135+ 3D solar-winged satellites orbiting in real time—with zero screen clutter.
 - **Collapsible Side Clay Icon Dock:** All controls stay neatly tucked into 5 tactile icons on the left (`🛰️`, `📡`, `🌐`, `💬`, `⌨️`). Click any icon to open its drawer, and click again (or press `Esc`) to close it.
 
 ---
 
+## 🎙️ Voice AI Talking Commands (`🎙️ Talk [V]`)
+
+Click **`🎙️ Talk [V]`** at the bottom-left (or open the **`💬`** chat drawer to type) and speak naturally in **English or Hinglish**:
+
+| Category | Voice / Chat Commands (Say or Type) | What ORBITA Does |
+| :--- | :--- | :--- |
+| **Greetings** | *"Hello Orbita"*, *"Hi"*, *"Kaise ho"* | Greets you and reports the total number of live satellites tracked |
+| **Filter Constellations** | *"Show all ISRO satellites"*, *"ISRO dikhao"*, *"Show Starlink"*, *"Show GPS"*, *"Show all satellites"* | Filters satellites both in the drawer list and on the 3D globe |
+| **Track Satellites** | *"Track ISS"*, *"Track NavIC"*, *"Track Cartosat"*, *"Track Oceansat"*, or say any satellite name | Locks onto the satellite and highlights its 90-minute orbit trajectory |
+| **Live Location** | *"Where is ISS?"*, *"ISS kahan hai?"*, *"Which country is it over?"* | Speaks the exact country or ocean currently overhead and its speed |
+| **Mission Details** | *"What does it do?"*, *"Satellite details"*, *"Ye satellite kya karta hai?"* | Explains the operating agency and payload capabilities |
+| **`VIEW MAX` & Camera** | *"View Max"*, *"Inspect"*, *"Close up"*, *"Exit"* | Flies camera up close to the 3D satellite and opens its intelligence dossier |
+| **Navigation & Lock** | *"Focus on India"*, *"India dikhao"*, *"Next satellite"*, *"Lock orbit"*, *"Unlock orbit"* | Centers the globe on India, cycles targets, or freezes/resumes rotation |
+| **Live OSINT Layers** | *"Show earthquakes"*, *"Bhukamp dikhao"*, *"Show flights"* | Overlays live USGS M4.5+ earthquakes or India sector air traffic |
+
+---
+
 ## 🧭 Step-by-Step User Guide
 
-### 1. Filter & Search Satellites (`🛰️` Icon)
-- Click the top **`🛰️` (All Satellites & Telemetry)** icon on the left dock.
-- Use the **Category Filter Tabs** (`ALL`, `ISRO`, `STARLINK`, `GPS`) to isolate specific constellations both in the list and on the 3D globe.
-- Or type any satellite name or NORAD ID (e.g., `CARTOSAT`, `NAVIC`, `STARLINK`) in the **Search Box** to find it instantly.
+1. **Filter & Search Satellites (`🛰️` Icon):**
+   - Click the top **`🛰️`** icon on the left dock and use the **`ALL`**, **`ISRO`**, **`STARLINK`**, or **`GPS`** tabs to filter constellations, or search by satellite name / NORAD ID.
+2. **Select a Satellite & Check Live Location:**
+   - Click any 3D satellite directly on the globe (or from the list) to view its **Overhead Country/Ocean**, **Altitude (km)**, **Velocity (km/s)**, **Coordinates**, and active **Ground Station RF Link**.
+3. **3D Close-Up Inspection (`VIEW MAX`):**
+   - Click **`⛶ VIEW MAX (3D INSPECT)`** or press **`M`** to zoom right beside the spacecraft in orbit and read its complete technical dossier.
 
-### 2. Select a Satellite & Track Live Location
-- **Click any 3D satellite** directly on the rotating globe, or select it from the drawer list.
-- Its **90-minute orbital trajectory** highlights around the Earth, and if it is within range of a ground station (such as *ISTRAC Bengaluru* or *SDSC Sriharikota*), a green **RF Telemetry Link** connects them.
-- The live telemetry card immediately updates with:
-  - **Overhead Country / Ocean** (real-time reverse geocoding)
-  - **Altitude (km)** & **Orbital Velocity (km/s)**
-  - **Exact Latitude & Longitude**
+---
 
-### 3. Inspect in 3D Close-Up with `VIEW MAX` (`M`)
-- With any satellite selected, click **`⛶ VIEW MAX (3D INSPECT)`** (or press **`M`** on your keyboard).
-- The camera smoothly flies right up to the 3D spacecraft in orbit and opens the **Satellite Intelligence Dossier**, showing its **NORAD ID**, **Operating Agency**, **Orbit Class**, **Inclination**, **Overhead Region**, and **Full Payload & Mission Capabilities**.
+## ⌨️ Keyboard & Mouse Shortcuts
 
-### 4. Talk to ORBITA Voice AI (`🎙️ Talk [V]`)
-- Click **`🎙️ Talk [V]`** at the bottom-left (or open the **`💬`** chat drawer to type) and give natural commands:
-  - *"Show all ISRO satellites"*
-  - *"Where is ISS right now?"*
-  - *"India dikhao"*
-  - *"View Max"*
-  - *"Show earthquakes"* or *"Show India flights"*
+- **360° Rotate Earth:** `W` `A` `S` `D` / Arrow Keys / Mouse Drag
+- **Zoom In / Out:** `+` / `-` / Mouse Scroll
+- **Quick Satellites:** `1` (ISS), `2` (NavIC), `3` (Cartosat-3), `4` (EOS-06)
+- **Cycle Targets:** `N` (Next) / `P` (Previous) / Click 3D Satellite
+- **Focus India:** `I` | **`VIEW MAX`:** `M` | **Voice AI:** `V` | **Lock Orbit:** `Space`
 
 ---
 
@@ -58,4 +67,4 @@ ORBITA_Project/
 ├── app.js          # Three.js globe, SGP4 orbital mechanics, Voice AI & OSINT
 ├── logo.svg        # Custom vector emblem & browser favicon
 ├── vercel.json     # Vercel production routing configuration
-└── README.md       # Project documentation & user guide
+└── README.md       # Project documentation, voice commands & user guide

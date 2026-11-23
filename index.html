@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ORBITA — 3D Orbital Command & Voice Satellite Inspector</title>
+    <title>ORBITA — 3D Orbital Command, Earth Imaging & Weather Inspector</title>
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -22,7 +22,7 @@
 
     <!-- Left Vertical Clay Icon Rail -->
     <div id="icon-dock">
-        <button class="dock-btn" data-tip="All Satellites & Telemetry" onclick="toggleDrawer('drawer-sats', this)">🛰️</button>
+        <button class="dock-btn" data-tip="Satellites, Imaging & Weather" onclick="toggleDrawer('drawer-sats', this)">🛰️</button>
         <button class="dock-btn" data-tip="Ground Stations" onclick="toggleDrawer('drawer-gs', this)">📡</button>
         <button class="dock-btn" data-tip="Live OSINT Feeds" onclick="toggleDrawer('drawer-osint', this)">🌐</button>
         <button class="dock-btn" data-tip="Voice AI Chat" onclick="toggleDrawer('drawer-voice', this)">💬</button>
@@ -35,10 +35,12 @@
             <span id="sat-count-title">All Satellites</span>
             <button class="close-x" onclick="closeAllDrawers()">✕</button>
         </div>
-        <input id="sat-search" type="text" placeholder="🔍 Search 120+ satellites or NORAD ID..." autocomplete="off">
+        <input id="sat-search" type="text" placeholder="🔍 Search satellite, camera, or NORAD..." autocomplete="off">
         <div class="filter-tabs">
             <button class="cat-tab active" onclick="setSatCategory('ALL', this)">ALL</button>
             <button class="cat-tab" onclick="setSatCategory('ISRO', this)">ISRO</button>
+            <button class="cat-tab" onclick="setSatCategory('IMAGING', this)">IMAGING</button>
+            <button class="cat-tab" onclick="setSatCategory('WEATHER', this)">WEATHER</button>
             <button class="cat-tab" onclick="setSatCategory('STARLINK', this)">STARLINK</button>
             <button class="cat-tab" onclick="setSatCategory('GPS', this)">GPS</button>
         </div>
@@ -46,12 +48,13 @@
 
         <div class="tele-box">
             <div>OVERHEAD <span id="t-country" style="color:var(--terra);">SCANNING...</span></div>
+            <div>SENSOR <span id="t-sensor" style="color:var(--sand);">OPTICAL / TELEMETRY</span></div>
             <div>ALTITUDE <span id="t-alt">-- KM</span></div>
             <div>VELOCITY <span id="t-vel">-- KM/S</span></div>
             <div>COORDS <span id="t-coords">--° N, --° E</span></div>
             <div>STATION <span id="t-gs-link" style="color:var(--sage);">SEARCHING...</span></div>
         </div>
-        <button id="view-max-btn" class="clay-action-btn" onclick="toggleViewMax()">⛶ VIEW MAX (3D INSPECT) [M]</button>
+        <button id="view-max-btn" class="clay-action-btn" onclick="toggleViewMax()">⛶ VIEW MAX (CAMERA & 3D) [M]</button>
     </div>
 
     <!-- Drawer 2: Ground Stations -->
@@ -83,7 +86,7 @@
             <button class="close-x" onclick="closeAllDrawers()">✕</button>
         </div>
         <div id="voice-chat-box" class="tele-box" style="margin-top:0;margin-bottom:9px;max-height:140px;overflow-y:auto;color:var(--text);">
-            Click <b>🎙️ Talk</b> or type below. Try: <i>"Show all ISRO satellites"</i>, <i>"Where is ISS?"</i>, <i>"India dikhao"</i>, or <i>"View Max"</i>.
+            Click <b>🎙️ Talk</b> or type below. Try: <i>"Show weather satellites"</i>, <i>"Show land mapping satellites"</i>, <i>"Track INSAT-3DS"</i>, or <i>"View Max"</i>.
         </div>
         <input id="voice-input" type="text" placeholder="Type message & press Enter...">
     </div>
@@ -100,7 +103,7 @@
             <div>Featured Sats <span>1, 2, 3, 4</span></div>
             <div>Next / Prev Sat <span>N / P / Click</span></div>
             <div>Focus India <span>I</span></div>
-            <div>View Max Dossier <span>M</span></div>
+            <div>View Max & Cam <span>M</span></div>
             <div>Voice Assistant <span>V</span></div>
             <div>Lock / Unlock <span>Space</span></div>
         </div>
@@ -109,26 +112,49 @@
     <!-- Compact Floating Voice Pill -->
     <div id="voice-pill">
         <button id="mic-pill-btn" onclick="startVoiceListening()">🎙️ Talk [V]</button>
-        <span id="voice-subtitle">Try: "Show all ISRO satellites" or "Where is ISS?"</span>
+        <span id="voice-subtitle">Try: "Show weather satellites" or "Show land mapping satellites"</span>
     </div>
 
-    <!-- VIEW MAX Deep Satellite Dossier -->
+    <!-- VIEW MAX Deep Satellite & Overhead Camera Dossier -->
     <div id="max-dossier">
         <div class="drawer-head">
             <span id="d-title" style="color:var(--terra);font-size:13px;">🛰️ ISS (ZARYA)</span>
             <button class="close-x" onclick="toggleViewMax(false)">✕</button>
         </div>
-        <div class="dossier-grid">
-            <div><b>OVERHEAD:</b> <span id="d-country" style="color:var(--terra);">--</span></div>
-            <div><b>AGENCY:</b> <span id="d-agency">--</span></div>
-            <div><b>ORBIT:</b> <span id="d-orbit">--</span></div>
-            <div><b>VELOCITY:</b> <span id="d-vel">--</span></div>
-            <div><b>INCLINATION:</b> <span id="d-inc">--</span></div>
-            <div><b>STATION:</b> <span id="d-gs" style="color:var(--sage);">--</span></div>
-        </div>
-        <div class="dossier-payload">
-            <b style="color:var(--sage);display:block;margin-bottom:3px;">PAYLOAD & CAPABILITIES</b>
-            <span id="d-details">--</span>
+
+        <div class="dossier-body">
+            <!-- Left: Technical & Camera Specs -->
+            <div>
+                <div class="dossier-grid">
+                    <div><b>OVERHEAD:</b> <span id="d-country" style="color:var(--terra);">--</span></div>
+                    <div><b>AGENCY:</b> <span id="d-agency">--</span></div>
+                    <div><b>CAMERA / SENSOR:</b> <span id="d-camera" style="color:var(--sand);">--</span></div>
+                    <div><b>RES / SWATH:</b> <span id="d-res">--</span></div>
+                    <div><b>ORBIT & ALT:</b> <span id="d-orbit">--</span></div>
+                    <div><b>STATION LINK:</b> <span id="d-gs" style="color:var(--sage);">--</span></div>
+                </div>
+                <div class="dossier-payload">
+                    <b style="color:var(--sage);display:block;margin-bottom:3px;">IMAGING & MISSION CAPABILITIES</b>
+                    <span id="d-details">--</span>
+                </div>
+            </div>
+
+            <!-- Right: Simulated Live Nadir Camera Feed -->
+            <div class="cam-feed-card">
+                <div class="cam-header">
+                    <span>📷 NADIR SENSOR FEED</span>
+                    <span id="cam-coords-tag">--°, --°</span>
+                </div>
+                <div class="cam-viewport">
+                    <img id="nadir-cam-img" alt="Overhead Earth Imagery" crossorigin="anonymous">
+                    <div class="cam-reticle"></div>
+                </div>
+                <div class="cam-modes">
+                    <button class="cam-mode-btn active" onclick="setCamMode('optical', this)">Optical</button>
+                    <button class="cam-mode-btn" onclick="setCamMode('thermal', this)">Weather IR</button>
+                    <button class="cam-mode-btn" onclick="setCamMode('radar', this)">SAR Radar</button>
+                </div>
+            </div>
         </div>
     </div>
 

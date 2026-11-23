@@ -36,7 +36,6 @@ scene.add(sunLight);
 
 const GLOBE_R = 4.35;
 function latLonAltToVector3(lat, lon, altKm) {
-    // Cap visual altitude scaling slightly so high MEO/GEO sats stay clearly visible in frame
     const effectiveAlt = Math.min(altKm, 4500);
     const r = GLOBE_R * (1 + (effectiveAlt / 6371.0) * 0.55);
     const phi = (90 - lat) * (Math.PI / 180);
@@ -66,6 +65,14 @@ const atmoMesh = new THREE.Mesh(
     new THREE.MeshBasicMaterial({ color: 0x7b96b0, transparent: true, opacity: 0.08, side: THREE.BackSide })
 );
 earthGroup.add(earthMesh, atmoMesh);
+
+// Ground Footprint Swath Ring (Shows camera scan area beneath selected Imaging/Weather satellite)
+const swathRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.34, 32),
+    new THREE.MeshBasicMaterial({ color: 0xd4b483, side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
+);
+swathRing.visible = false;
+earthGroup.add(swathRing);
 
 // 3. Satellite Ground Stations
 const GROUND_STATIONS = [
@@ -103,7 +110,7 @@ let targetRotY = 3.29, targetRotX = 0.22, targetZoom = 12.8;
 earthGroup.rotation.set(targetRotX, targetRotY, 0);
 scene.add(earthGroup);
 
-// 4. High-Visibility 3D Winged Satellite Models (Clearly Visible Around Entire Globe)
+// 4. High-Visibility 3D Winged Satellite Models
 const busGeo = new THREE.BoxGeometry(0.058, 0.058, 0.082);
 const panelGeo = new THREE.BoxGeometry(0.24, 0.009, 0.058);
 const strutGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.28, 6);
@@ -133,59 +140,189 @@ function createSatMesh(accentColor, isFeatured) {
     return g;
 }
 
-const PROFILES = {
-    ISS: { norad: "25544", agency: "NASA / ROSCOSMOS / ESA / JAXA", orbit: "LEO (~415 km)", inc: "51.64° | 92.9m", details: "Habitable microgravity laboratory conducting space research, continuous Earth observation, and atmospheric telemetry." },
-    NAVIC: { norad: "43286", agency: "ISRO (India)", orbit: "IGSO (~35,786 km)", inc: "29.01° | 1436m", details: "India's independent regional navigation satellite providing dual-frequency L5 and S-band positioning across India and 1,500 km beyond." },
-    CARTOSAT: { norad: "44804", agency: "ISRO (India)", orbit: "SSO (~509 km)", inc: "97.48° | 94.7m", details: "High-resolution Earth observation spacecraft capturing 0.25m imagery for smart-city mapping, 3D terrain modeling, and border surveillance." },
-    INSAT: { norad: "54361", agency: "ISRO (India)", orbit: "SSO (~742 km)", inc: "98.34° | 99.6m", details: "Oceansat-3 mission monitoring sea surface temperature, ocean winds, cyclone formation, and potential fishing zones." }
-};
-
-function getProfile(s) {
-    if (s.key && PROFILES[s.key]) return PROFILES[s.key];
-    if (s.cat === "ISRO") {
-        return { norad: s.norad, agency: "ISRO (India)", orbit: "Indian Orbital Asset", inc: "Regional / Polar", details: "Indian Space Research Organisation satellite supporting telecommunications, weather forecasting, navigation, or high-resolution remote sensing." };
-    }
-    if (s.cat === "STARLINK") {
-        return { norad: s.norad, agency: "SpaceX", orbit: "LEO (~550 km)", inc: "53.0° | 95.6m", details: "Phased-array broadband communications satellite with optical inter-satellite laser links for low-latency global internet coverage." };
-    }
-    if (s.cat === "GPS") {
-        return { norad: s.norad, agency: "Global GNSS Constellation", orbit: "MEO (~20,200 km)", inc: "55.0° | 718m", details: "Navigation satellite broadcasting atomic-clock timing and ephemeris signals for global positioning." };
-    }
-    return { norad: s.norad, agency: "International Operator", orbit: "Active SGP4 Orbit", inc: "Tracked", details: "Active spacecraft tracked via NORAD Two-Line Element telemetry for Earth observation or communications." };
-}
-
-// 5. Core Space Stations & ISRO Fleet TLEs
+// 5. Featured Satellites Database (Land Mapping, Weather, ISRO & Stations)
 const CORE_TLES = [
-    { key: "ISS", name: "ISS (ZARYA)", cat: "STATION", badge: "LEO", color: 0x7fa38d, l1: "1 25544U 98067A   26325.50000000  .00016717  00000-0  10270-3 0  9992", l2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537" },
-    { key: null, name: "TIANGONG STATION", cat: "STATION", badge: "LEO", color: 0x7fa38d, l1: "1 48274U 21035A   26325.50000000  .00014200  00000-0  11200-3 0  9993", l2: "2 48274  41.4710 118.2100 0005100  85.1200 274.9100 15.6120401028104" },
-    { key: "NAVIC", name: "IRNSS-1I (NAVIC)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 43286U 18035A   26325.50000000 -.00000240  00000-0  00000-0 0  9991", l2: "2 43286  29.0120 135.4210 0021040 185.1200 174.9100  1.00271240 24105" },
-    { key: "CARTOSAT", name: "CARTOSAT-3 (ISRO)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 44804U 19081A   26325.50000000  .00004510  00000-0  21450-3 0  9995", l2: "2 44804  97.4820  48.2150 0011200  92.4100 267.8200 15.19241020381240" },
-    { key: "INSAT", name: "EOS-06 (OCEANSAT-3)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 54361U 22158A   26325.50000000  .00001820  00000-0  18420-3 0  9998", l2: "2 54361  98.3410 112.6540 0001450  84.1200 276.0100 14.46521080210455" },
-    { key: null, name: "GSAT-30 (ISRO)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 45026U 20005A   26325.50000000 -.00000180  00000-0  00000-0 0  9992", l2: "2 45026   0.0420  83.0000 0002100 120.0000 240.0000  1.00272100 24501" },
-    { key: null, name: "RISAT-2B (ISRO)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 44233U 19028A   26325.50000000  .00003210  00000-0  15200-3 0  9994", l2: "2 44233  37.0010 142.3100 0008500  65.4000 294.7000 15.0512000039102" },
-    { key: null, name: "INSAT-3DS (ISRO)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 58992U 24033A   26325.50000000 -.00000150  00000-0  00000-0 0  9997", l2: "2 58992   0.0510  74.0000 0001900 110.0000 250.0000  1.00271900  9804" },
-    { key: null, name: "RESOURCESAT-2A", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 41877U 16074A   26325.50000000  .00001120  00000-0  14100-3 0  9996", l2: "2 41877  98.7210 205.1400 0001800  78.2000 281.9000 14.2154000049210" },
-    { key: null, name: "EOS-08 (ISRO)", cat: "ISRO", badge: "ISRO", color: 0xc88a65, l1: "1 60452U 24149A   26325.50000000  .00002840  00000-0  19100-3 0  9991", l2: "2 60452  37.4100  95.4000 0007200  54.1000 306.0000 15.29140000 6840" }
+    {
+        key: "ISS", name: "ISS (ZARYA)", tags: ["STATION", "IMAGING"], badge: "LEO CAM", color: 0x7fa38d,
+        agency: "NASA / ROSCOSMOS / ESA / JAXA", camera: "HD Earth Viewing & Crew Cameras", res: "1–3m | Crew Video",
+        details: "Habitable microgravity laboratory capturing continuous high-definition Earth observation video, lightning telemetry, and atmospheric photography.",
+        l1: "1 25544U 98067A   26325.50000000  .00016717  00000-0  10270-3 0  9992",
+        l2: "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537"
+    },
+    {
+        key: "CARTOSAT", name: "CARTOSAT-3 (ISRO)", tags: ["ISRO", "IMAGING"], badge: "LAND MAP", color: 0xd4b483,
+        camera: "0.25m PAN + 1.14m MX Camera", res: "0.25m | 16 km Swath",
+        agency: "ISRO (India)",
+        details: "India's sharpest optical Earth-imaging satellite. Captures 25 cm ultra-high-resolution land mapping pictures for smart cities, 3D terrain models, and border surveillance.",
+        l1: "1 44804U 19081A   26325.50000000  .00004510  00000-0  21450-3 0  9995",
+        l2: "2 44804  97.4820  48.2150 0011200  92.4100 267.8200 15.19241020381240"
+    },
+    {
+        key: null, name: "INSAT-3DS (ISRO)", tags: ["ISRO", "WEATHER"], badge: "WEATHER", color: 0x7b96b0,
+        camera: "6-Channel Imager + 19-Ch Sounder", res: "1 km VIS / 4 km IR",
+        agency: "ISRO (India)",
+        details: "Dedicated Indian meteorological weather satellite capturing continuous cloud cover, monsoon movement, cyclone tracking, and atmospheric temperature profiles over India.",
+        l1: "1 58992U 24033A   26325.50000000 -.00000150  00000-0  00000-0 0  9997",
+        l2: "2 58992   0.0510  74.0000 0001900 110.0000 250.0000  1.00271900  9804"
+    },
+    {
+        key: null, name: "RESOURCESAT-2A", tags: ["ISRO", "IMAGING"], badge: "LAND MAP", color: 0xd4b483,
+        camera: "LISS-3, LISS-4 (5.8m) & AWiFS", res: "5.8m | 740 km Swath",
+        agency: "ISRO (India)",
+        details: "Primary ISRO land-mapping mission photographing agricultural crops, forest cover, river basins, and groundwater resources across India.",
+        l1: "1 41877U 16074A   26325.50000000  .00001120  00000-0  14100-3 0  9996",
+        l2: "2 41877  98.7210 205.1400 0001800  78.2000 281.9000 14.2154000049210"
+    },
+    {
+        key: null, name: "RISAT-2B (ISRO)", tags: ["ISRO", "IMAGING"], badge: "SAR RADAR", color: 0xd4b483,
+        camera: "X-Band Synthetic Aperture Radar", res: "1m Radar | All-Weather",
+        agency: "ISRO (India)",
+        details: "All-weather day-and-night radar imaging satellite capable of seeing through thick monsoon clouds to map floods, agriculture, and strategic terrain.",
+        l1: "1 44233U 19028A   26325.50000000  .00003210  00000-0  15200-3 0  9994",
+        l2: "2 44233  37.0010 142.3100 0008500  65.4000 294.7000 15.0512000039102"
+    },
+    {
+        key: "INSAT", name: "EOS-06 (OCEANSAT-3)", tags: ["ISRO", "WEATHER", "IMAGING"], badge: "OCEAN/WX", color: 0x7b96b0,
+        camera: "OCM-3 13-Band + SSTM Thermal", res: "360m | 1440 km Swath",
+        agency: "ISRO (India)",
+        details: "Captures ocean color, sea surface temperature, wind vectors, and cyclone genesis alerts across the Indian Ocean.",
+        l1: "1 54361U 22158A   26325.50000000  .00001820  00000-0  18420-3 0  9998",
+        l2: "2 54361  98.3410 112.6540 0001450  84.1200 276.0100 14.46521080210455"
+    },
+    {
+        key: "NAVIC", name: "IRNSS-1I (NAVIC)", tags: ["ISRO", "GPS"], badge: "ISRO NAV", color: 0xc88a65,
+        camera: "L5 & S-Band Atomic Nav Payload", res: "<5m PNT Accuracy",
+        agency: "ISRO (India)",
+        details: "India's regional navigation satellite delivering dual-frequency L5 and S-band positioning across India and 1,500 km beyond.",
+        l1: "1 43286U 18035A   26325.50000000 -.00000240  00000-0  00000-0 0  9991",
+        l2: "2 43286  29.0120 135.4210 0021040 185.1200 174.9100  1.00271240 24105"
+    },
+    {
+        key: null, name: "SENTINEL-2A (ESA)", tags: ["IMAGING"], badge: "LAND MAP", color: 0xd4b483,
+        camera: "13-Band Multispectral Imager", res: "10m | 290 km Swath",
+        agency: "ESA (Copernicus)",
+        details: "High-resolution optical land-mapping satellite photographing global forests, crops, glaciers, lakes, and urban expansion.",
+        l1: "1 40697U 15028A   26325.50000000  .00001200  00000-0  11000-3 0  9992",
+        l2: "2 40697  98.5690 165.4100 0001200  88.2000 271.9000 14.3081800058102"
+    },
+    {
+        key: null, name: "LANDSAT-9 (NASA)", tags: ["IMAGING"], badge: "LAND MAP", color: 0xd4b483,
+        camera: "OLI-2 Optical + TIRS-2 Thermal", res: "15m PAN / 30m MS",
+        agency: "NASA / USGS",
+        details: "Captures 11-band optical and thermal infrared land imagery to track deforestation, water quality, urban heat, and geological changes.",
+        l1: "1 49260U 21088A   26325.50000000  .00001450  00000-0  13200-3 0  9995",
+        l2: "2 49260  98.2100 225.3000 0001300  91.4000 268.7000 14.5710000026410"
+    },
+    {
+        key: null, name: "NOAA-20 (JPSS-1)", tags: ["WEATHER"], badge: "WEATHER", color: 0x7b96b0,
+        camera: "VIIRS + CrIS Weather Suite", res: "375m | 3000 km Swath",
+        agency: "NOAA (USA)",
+        details: "Polar-orbiting weather satellite capturing global storm systems, sea surface temperature, snow cover, and wildfire hotspots.",
+        l1: "1 43013U 17073A   26325.50000000  .00001900  00000-0  16500-3 0  9991",
+        l2: "2 43013  98.7400 190.2000 0001500  74.1000 286.0000 14.1956000046102"
+    },
+    {
+        key: null, name: "GOES-18 (WEATHER)", tags: ["WEATHER"], badge: "WEATHER", color: 0x7b96b0,
+        camera: "Advanced Baseline Imager (16-Ch)", res: "0.5 km VIS / 2 km IR",
+        agency: "NOAA / NASA",
+        details: "Geostationary weather observatory capturing real-time hurricane development, lightning flashes, and atmospheric water vapor.",
+        l1: "1 51850U 22021A   26325.50000000 -.00000120  00000-0  00000-0 0  9998",
+        l2: "2 51850   0.0320 223.0000 0001800 115.0000 245.0000  1.00271500 17102"
+    },
+    {
+        key: null, name: "METEOSAT-9 (IODC)", tags: ["WEATHER"], badge: "WEATHER", color: 0x7b96b0,
+        camera: "SEVIRI 12-Channel Imager", res: "1 km HRV / 3 km IR",
+        agency: "EUMETSAT",
+        details: "Positioned over the Indian Ocean to provide 15-minute weather imaging of cyclones, dust storms, and cloud systems across Asia and Africa.",
+        l1: "1 28912U 05049B   26325.50000000 -.00000110  00000-0  00000-0 0  9993",
+        l2: "2 28912   1.8500  45.5000 0002400  95.0000 265.0000  1.00272000 76104"
+    },
+    {
+        key: null, name: "GSAT-30 (ISRO)", tags: ["ISRO"], badge: "ISRO COM", color: 0xc88a65,
+        camera: "C & Ku-Band High-Throughput", res: "DTH & VSAT Relay",
+        agency: "ISRO (India)",
+        details: "Indian geostationary telecommunications satellite providing television broadcasting, ATM connectivity, and emergency communications.",
+        l1: "1 45026U 20005A   26325.50000000 -.00000180  00000-0  00000-0 0  9992",
+        l2: "2 45026   0.0420  83.0000 0002100 120.0000 240.0000  1.00272100 24501"
+    }
 ];
 
 const satellites = [], clickableMeshes = [];
 let selectedSat = null, orbitLine = null, gsLinkLine = null;
 let activeCategory = "ALL";
 
-function detectCategory(name) {
+function detectTags(name) {
     const n = name.toUpperCase();
-    if (/GSAT|INSAT|IRNSS|NAVIC|EOS|RISAT|CARTOSAT|ADITYA|CMS|OCEANSAT|RESOURCESAT/.test(n)) return "ISRO";
-    if (/STARLINK|ONEWEB|IRIDIUM/.test(n)) return "STARLINK";
-    if (/GPS|NAVSTAR|GALILEO|GLONASS|BEIDOU/.test(n)) return "GPS";
-    return "OTHER";
+    const tags = [];
+    if (/GSAT|INSAT|IRNSS|NAVIC|EOS|RISAT|CARTOSAT|ADITYA|CMS|OCEANSAT|RESOURCESAT/.test(n)) tags.push("ISRO");
+    if (/CARTOSAT|RESOURCESAT|RISAT|SENTINEL|LANDSAT|WORLDVIEW|PLEIADES|SPOT|EOS/.test(n)) tags.push("IMAGING");
+    if (/INSAT|NOAA|GOES|METEOSAT|METOP|FENGYUN|HIMAWARI|EOS-06/.test(n)) tags.push("WEATHER");
+    if (/STARLINK|ONEWEB|IRIDIUM/.test(n)) tags.push("STARLINK");
+    if (/GPS|NAVSTAR|GALILEO|GLONASS|BEIDOU|IRNSS/.test(n)) tags.push("GPS");
+    if (tags.length === 0) tags.push("LEO");
+    return tags;
 }
 
-function addSat(name, l1, l2, cat = "OTHER", badge = "LEO", color = 0x7b96b0, key = null, featured = false) {
+function getFallbackMeta(s) {
+    if (s.tags.includes("WEATHER")) {
+        return {
+            agency: "Meteorological Space Agency",
+            camera: "Multispectral Cloud & IR Imager",
+            res: "1–4 km | Wide Swath",
+            orbit: "Weather Orbit",
+            details: "Captures real-time cloud formation, storm tracking, sea surface temperature, and atmospheric humidity imagery."
+        };
+    }
+    if (s.tags.includes("IMAGING")) {
+        return {
+            agency: "Earth Observation Operator",
+            camera: "High-Res Optical / Multispectral Cam",
+            res: "0.5–10m | Land Mapping",
+            orbit: "Sun-Synchronous LEO",
+            details: "Photographs Earth's surface for topographic land mapping, agriculture monitoring, disaster response, and urban planning."
+        };
+    }
+    if (s.tags.includes("STARLINK")) {
+        return {
+            agency: "SpaceX",
+            camera: "Ka/Ku-Band Phased Array + Laser Link",
+            res: "Broadband Relay",
+            orbit: "LEO (~550 km)",
+            details: "Low-Earth-orbit broadband communications spacecraft delivering high-speed internet coverage."
+        };
+    }
+    if (s.tags.includes("GPS")) {
+        return {
+            agency: "Global GNSS Constellation",
+            camera: "L-Band Atomic Navigation Payload",
+            res: "Global PNT Timing",
+            orbit: "MEO (~20,200 km)",
+            details: "Broadcasts precision atomic-clock positioning and navigation signals worldwide."
+        };
+    }
+    return {
+        agency: "International Space Operator",
+        camera: "Orbital Telemetry & Sensing Payload",
+        res: "SGP4 Active",
+        orbit: "Low Earth Orbit",
+        details: "Active orbital spacecraft tracked via NORAD Two-Line Element telemetry."
+    };
+}
+
+function addSat(name, l1, l2, tags = ["LEO"], badge = "LEO", color = 0x7b96b0, key = null, featured = false, customMeta = {}) {
     try {
         const satrec = satellite.twoline2satrec(l1, l2);
         const mesh = createSatMesh(color, featured);
         earthGroup.add(mesh);
-        const obj = { key, name, norad: l1.substring(2, 7).trim(), cat, badge, color, satrec, mesh, lat: 0, lon: 0, alt: 0, vel: 0 };
+        const obj = {
+            key, name, norad: l1.substring(2, 7).trim(),
+            tags, badge, color, satrec, mesh,
+            lat: 0, lon: 0, alt: 0, vel: 0,
+            agency: customMeta.agency || null,
+            camera: customMeta.camera || null,
+            res: customMeta.res || null,
+            details: customMeta.details || null
+        };
         satellites.push(obj);
         mesh.traverse(c => { if (c.isMesh) { c.userData = obj; clickableMeshes.push(c); } });
         return obj;
@@ -193,7 +330,7 @@ function addSat(name, l1, l2, cat = "OTHER", badge = "LEO", color = 0x7b96b0, ke
 }
 
 CORE_TLES.forEach(s => {
-    const o = addSat(s.name, s.l1, s.l2, s.cat, s.badge, s.color, s.key, true);
+    const o = addSat(s.name, s.l1, s.l2, s.tags, s.badge, s.color, s.key, true, s);
     if (s.key === "ISS") selectedSat = o;
 });
 
@@ -202,8 +339,8 @@ function renderSatelliteList() {
     const query = (document.getElementById("sat-search").value || "").trim().toUpperCase();
 
     const filtered = satellites.filter(s => {
-        const matchCat = activeCategory === "ALL" || s.cat === activeCategory;
-        const matchSearch = !query || s.name.toUpperCase().includes(query) || s.norad.includes(query);
+        const matchCat = activeCategory === "ALL" || s.tags.includes(activeCategory);
+        const matchSearch = !query || s.name.toUpperCase().includes(query) || s.norad.includes(query) || (s.camera && s.camera.toUpperCase().includes(query));
         return matchCat && matchSearch;
     });
 
@@ -211,14 +348,14 @@ function renderSatelliteList() {
     filtered.forEach(s => {
         const div = document.createElement("div");
         div.className = "sat-item" + (selectedSat === s ? " active" : "");
-        const badgeColor = s.cat === "ISRO" ? "var(--terra)" : (s.cat === "STATION" ? "var(--sage)" : (s.cat === "GPS" ? "var(--sand)" : "var(--slate)"));
+        const badgeColor = s.tags.includes("IMAGING") ? "var(--sand)" : (s.tags.includes("WEATHER") ? "var(--slate)" : (s.tags.includes("ISRO") ? "var(--terra)" : "var(--sage)"));
         div.innerHTML = `<span>${s.name}</span><span style="color:${badgeColor};font-size:10px;font-weight:700;">${s.badge}</span>`;
         div.onclick = () => selectSatellite(s);
         listEl.appendChild(div);
     });
 
     satellites.forEach(s => {
-        s.mesh.visible = (activeCategory === "ALL" || s.cat === activeCategory || s === selectedSat);
+        s.mesh.visible = (activeCategory === "ALL" || s.tags.includes(activeCategory) || s === selectedSat);
     });
 }
 
@@ -231,40 +368,44 @@ function setSatCategory(cat, btnEl) {
 
 document.getElementById("sat-search").addEventListener("input", renderSatelliteList);
 
-// Load 130+ Live Satellites (Guaranteed Multi-Shell Constellation if CelesTrak blocks CORS)
+// Load 135+ Live Satellites
 (async () => {
     let added = 0;
     try {
         const res = await fetch("https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle");
         if (!res.ok) throw new Error("CelesTrak unavailable");
         const lines = (await res.text()).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-        for (let i = 0; i < lines.length - 2 && added < 130; i += 3) {
+        for (let i = 0; i < lines.length - 2 && added < 125; i += 3) {
             if (lines[i + 1].startsWith("1 ") && lines[i + 2].startsWith("2 ")) {
                 const name = lines[i];
                 if (satellites.some(existing => existing.name === name)) continue;
-                const cat = detectCategory(name);
-                const col = cat === "ISRO" ? 0xc88a65 : (cat === "GPS" ? 0xd4b483 : 0x7b96b0);
-                addSat(name, lines[i + 1], lines[i + 2], cat, cat === "OTHER" ? "LEO" : cat, col, null, cat === "ISRO");
+                const tags = detectTags(name);
+                const badge = tags.includes("IMAGING") ? "LAND MAP" : (tags.includes("WEATHER") ? "WEATHER" : (tags.includes("ISRO") ? "ISRO" : tags[0]));
+                const col = tags.includes("IMAGING") ? 0xd4b483 : (tags.includes("WEATHER") ? 0x7b96b0 : (tags.includes("ISRO") ? 0xc88a65 : 0x7fa38d));
+                addSat(name, lines[i + 1], lines[i + 2], tags, badge, col, null, tags.includes("ISRO"));
                 added++;
             }
         }
     } catch (e) {}
 
-    // Always ensure 135+ satellites are orbiting around the entire globe
     if (added < 40) {
-        const needed = 130 - added;
+        const needed = 125 - added;
         for (let i = 0; i < needed; i++) {
             const id = String(51000 + i).padStart(5, '0');
             const inc = (18 + (i % 9) * 9.5).toFixed(4).padStart(8, ' ');
             const raan = ((i * 27.5) % 360).toFixed(4).padStart(8, ' ');
             const ma = ((i * 43.7) % 360).toFixed(4).padStart(8, ' ');
-            const isGps = i % 6 === 0;
-            const isStarlink = !isGps && (i % 2 === 0);
+            const isGps = i % 7 === 0;
+            const isWeather = !isGps && (i % 9 === 0);
+            const isImaging = !isGps && !isWeather && (i % 8 === 0);
+            const isStarlink = !isGps && !isWeather && !isImaging && (i % 2 === 0);
+
             const mm = (isGps ? 2.0056 : (14.4 + (i % 6) * 0.28)).toFixed(8).padStart(11, ' ');
-            const cat = isGps ? "GPS" : (isStarlink ? "STARLINK" : "OTHER");
-            const col = isGps ? 0xd4b483 : (isStarlink ? 0x7b96b0 : 0x7fa38d);
-            const name = isGps ? `NAVSTAR-GPS-${70 + i}` : (isStarlink ? `STARLINK-${3100 + i}` : `NOAA-LEO-${100 + i}`);
-            addSat(name, `1 ${id}U 24010A   26325.50000000  .00002100  00000-0  12000-3 0  9990`, `2 ${id} ${inc} ${raan} 0004500 090.0000 ${ma} ${mm}10000`, cat, cat === "OTHER" ? "LEO" : cat, col);
+            const tags = isGps ? ["GPS"] : (isWeather ? ["WEATHER"] : (isImaging ? ["IMAGING"] : (isStarlink ? ["STARLINK"] : ["LEO"])));
+            const badge = isGps ? "GPS" : (isWeather ? "WEATHER" : (isImaging ? "LAND MAP" : (isStarlink ? "STARLINK" : "LEO")));
+            const col = isWeather ? 0x7b96b0 : (isImaging ? 0xd4b483 : (isGps ? 0xc88a65 : 0x7fa38d));
+            const name = isGps ? `NAVSTAR-GPS-${70 + i}` : (isWeather ? `METOP-WX-${10 + i}` : (isImaging ? `WORLDVIEW-EO-${20 + i}` : (isStarlink ? `STARLINK-${3100 + i}` : `ORBITAL-NODE-${100 + i}`)));
+            addSat(name, `1 ${id}U 24010A   26325.50000000  .00002100  00000-0  12000-3 0  9990`, `2 ${id} ${inc} ${raan} 0004500 090.0000 ${ma} ${mm}10000`, tags, badge, col);
         }
     }
 
@@ -312,8 +453,37 @@ async function toggleFlights(force = null) {
     document.getElementById("osint-readout").innerText = `Tracking ${flightMeshes.length} active flights in India sector.`;
 }
 
-// 7. Overhead Country & Telemetry
-let overheadText = "SCANNING...", lastGeo = 0, nearestGS = "SCANNING...";
+// 7. Overhead Country, Nadir Camera Tile & Telemetry
+let overheadText = "SCANNING...", lastGeo = 0, nearestGS = "SCANNING...", lastTileKey = "";
+
+function latLonToTile(lat, lon, z) {
+    const clampedLat = Math.max(-85, Math.min(85, lat));
+    const n = Math.pow(2, z);
+    const x = Math.floor(((lon + 180) / 360) * n);
+    const latRad = (clampedLat * Math.PI) / 180;
+    const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+    return { z, x: Math.max(0, Math.min(n - 1, x)), y: Math.max(0, Math.min(n - 1, y)) };
+}
+
+function updateNadirCameraFeed() {
+    if (!selectedSat || !viewMaxActive) return;
+    document.getElementById("cam-coords-tag").innerText = `${selectedSat.lat.toFixed(1)}°, ${selectedSat.lon.toFixed(1)}°`;
+    const zoomLevel = selectedSat.tags.includes("WEATHER") ? 5 : 7;
+    const tile = latLonToTile(selectedSat.lat, selectedSat.lon, zoomLevel);
+    const key = `${tile.z}/${tile.y}/${tile.x}`;
+    if (key !== lastTileKey) {
+        lastTileKey = key;
+        document.getElementById("nadir-cam-img").src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${key}`;
+    }
+}
+
+function setCamMode(mode, btnEl) {
+    const img = document.getElementById("nadir-cam-img");
+    img.className = `mode-${mode}`;
+    document.querySelectorAll(".cam-mode-btn").forEach(b => b.classList.remove("active"));
+    if (btnEl) btnEl.classList.add("active");
+}
+
 function fallbackRegion(lat, lon) {
     if (lat >= 6.5 && lat <= 35.8 && lon >= 68.0 && lon <= 97.5) return "INDIA";
     if (lat >= 18.0 && lat <= 53.5 && lon >= 74.0 && lon <= 135.0) return "CHINA";
@@ -372,6 +542,7 @@ function updateGSLink() {
 function selectSatellite(s) {
     if (!s) return;
     selectedSat = s;
+    lastTileKey = "";
     renderSatelliteList();
     lastGeo = 0; resolveCountry(s.lat, s.lon); drawOrbitPath(s); updateHUD();
 }
@@ -387,28 +558,42 @@ function toggleViewMax(force = null) {
     viewMaxActive = force !== null ? force : !viewMaxActive;
     document.getElementById("view-max-btn").classList.toggle("active", viewMaxActive);
     document.getElementById("max-dossier").classList.toggle("visible", viewMaxActive);
+    if (viewMaxActive && selectedSat) {
+        const defaultMode = selectedSat.tags.includes("WEATHER") ? "thermal" : "optical";
+        const modeBtns = document.querySelectorAll(".cam-mode-btn");
+        setCamMode(defaultMode, defaultMode === "thermal" ? modeBtns[1] : modeBtns[0]);
+        updateNadirCameraFeed();
+    }
     updateHUD();
 }
 
 function updateHUD() {
     if (!selectedSat) return;
+    const fb = getFallbackMeta(selectedSat);
+    const camName = selectedSat.camera || fb.camera;
+    const agencyName = selectedSat.agency || fb.agency;
+    const resSpec = selectedSat.res || fb.res;
+    const detailText = selectedSat.details || fb.details;
+
     document.getElementById("pill-sat").innerText = selectedSat.name;
     document.getElementById("pill-country").innerText = overheadText;
     document.getElementById("t-country").innerText = overheadText;
+    document.getElementById("t-sensor").innerText = camName;
     document.getElementById("t-alt").innerText = `${selectedSat.alt.toFixed(1)} KM`;
     document.getElementById("t-vel").innerText = `${selectedSat.vel.toFixed(2)} KM/S`;
     document.getElementById("t-coords").innerText = `${selectedSat.lat.toFixed(2)}° N, ${selectedSat.lon.toFixed(2)}° E`;
     document.getElementById("t-gs-link").innerText = nearestGS;
+
     if (viewMaxActive) {
-        const p = getProfile(selectedSat);
-        document.getElementById("d-title").innerText = `🛰️ ${selectedSat.name} — NORAD #${p.norad}`;
+        document.getElementById("d-title").innerText = `🛰️ ${selectedSat.name} — NORAD #${selectedSat.norad}`;
         document.getElementById("d-country").innerText = overheadText;
-        document.getElementById("d-agency").innerText = p.agency;
-        document.getElementById("d-orbit").innerText = `${p.orbit} (${selectedSat.alt.toFixed(1)} km)`;
-        document.getElementById("d-vel").innerText = `${selectedSat.vel.toFixed(2)} km/s`;
-        document.getElementById("d-inc").innerText = p.inc;
+        document.getElementById("d-agency").innerText = agencyName;
+        document.getElementById("d-camera").innerText = camName;
+        document.getElementById("d-res").innerText = resSpec;
+        document.getElementById("d-orbit").innerText = `${selectedSat.alt.toFixed(1)} km (${selectedSat.vel.toFixed(2)} km/s)`;
         document.getElementById("d-gs").innerText = nearestGS;
-        document.getElementById("d-details").innerText = p.details;
+        document.getElementById("d-details").innerText = detailText;
+        updateNadirCameraFeed();
     }
 }
 
@@ -424,7 +609,20 @@ function propagate() {
             s.mesh.lookAt(0, 0, 0);
         }
     });
-    if (selectedSat) { resolveCountry(selectedSat.lat, selectedSat.lon); updateGSLink(); }
+
+    if (selectedSat) {
+        resolveCountry(selectedSat.lat, selectedSat.lon);
+        updateGSLink();
+        // Position ground swath scan ring directly beneath Imaging / Weather satellites
+        if (selectedSat.tags.includes("IMAGING") || selectedSat.tags.includes("WEATHER")) {
+            swathRing.visible = true;
+            const groundPos = latLonAltToVector3(selectedSat.lat, selectedSat.lon, 15);
+            swathRing.position.copy(groundPos);
+            swathRing.lookAt(groundPos.clone().multiplyScalar(2));
+        } else {
+            swathRing.visible = false;
+        }
+    }
     updateHUD();
 }
 propagate(); setInterval(propagate, 1000); setInterval(() => { if (selectedSat) drawOrbitPath(selectedSat); }, 15000);
@@ -455,52 +653,71 @@ function processVoiceQuery(raw) {
     const q = raw.toLowerCase().trim();
     if (!q) return;
 
-    if (q.includes("isro") && (q.includes("all") || q.includes("show") || q.includes("dikhao") || q.includes("filter"))) {
+    if (q.includes("weather") || q.includes("mausam") || q.includes("cyclone")) {
+        setSatCategory("WEATHER", document.querySelectorAll(".cat-tab")[3]);
+        toggleDrawer("drawer-sats", document.querySelectorAll(".dock-btn")[0]);
+        const wxSat = satellites.find(s => s.name.includes("INSAT-3DS")) || satellites.find(s => s.tags.includes("WEATHER"));
+        if (wxSat) selectSatellite(wxSat);
+        orbitaSpeak("Showing weather and meteorological satellites including INSAT-3DS, NOAA-20, and Meteosat-9.");
+    } else if (q.includes("imaging") || q.includes("land") || q.includes("mapping") || q.includes("maping") || q.includes("camera")) {
+        setSatCategory("IMAGING", document.querySelectorAll(".cat-tab")[2]);
+        toggleDrawer("drawer-sats", document.querySelectorAll(".dock-btn")[0]);
+        const imgSat = satellites.find(s => s.name.includes("CARTOSAT")) || satellites.find(s => s.tags.includes("IMAGING"));
+        if (imgSat) selectSatellite(imgSat);
+        toggleViewMax(true);
+        orbitaSpeak("Showing land mapping and optical camera satellites. Opening View Max with live overhead sensor feed.");
+    } else if (q.includes("isro") && (q.includes("all") || q.includes("show") || q.includes("dikhao"))) {
         setSatCategory("ISRO", document.querySelectorAll(".cat-tab")[1]);
         toggleDrawer("drawer-sats", document.querySelectorAll(".dock-btn")[0]);
         focusOnIndia();
-        const isroCount = satellites.filter(s => s.cat === "ISRO").length;
-        orbitaSpeak(`Showing all ${isroCount} ISRO satellites on the globe and focusing on India sector.`);
+        const isroCount = satellites.filter(s => s.tags.includes("ISRO")).length;
+        orbitaSpeak(`Showing all ${isroCount} ISRO satellites including Cartosat-3, Resourcesat-2A, RISAT-2B, and INSAT-3DS.`);
     } else if (q.includes("starlink")) {
-        setSatCategory("STARLINK", document.querySelectorAll(".cat-tab")[2]);
+        setSatCategory("STARLINK", document.querySelectorAll(".cat-tab")[4]);
         toggleDrawer("drawer-sats", document.querySelectorAll(".dock-btn")[0]);
         orbitaSpeak("Filtering Starlink broadband constellation.");
     } else if (q.includes("gps")) {
-        setSatCategory("GPS", document.querySelectorAll(".cat-tab")[3]);
+        setSatCategory("GPS", document.querySelectorAll(".cat-tab")[5]);
         toggleDrawer("drawer-sats", document.querySelectorAll(".dock-btn")[0]);
         orbitaSpeak("Filtering Global Navigation GPS satellites.");
     } else if (q.includes("all satellite") || q.includes("sab satellite") || q.includes("show all")) {
         setSatCategory("ALL", document.querySelectorAll(".cat-tab")[0]);
         orbitaSpeak(`Displaying all ${satellites.length} active satellites in orbit.`);
     } else if (q.includes("hello") || q.includes("hi ") || q === "hi" || q.includes("kaise ho")) {
-        orbitaSpeak(`Hello Commander Nitin. Tracking ${satellites.length} live satellites. Ask me where any satellite is, or say Show all ISRO satellites.`);
+        orbitaSpeak(`Hello Commander Nitin. Tracking ${satellites.length} satellites including land mapping and weather spacecraft.`);
     } else if (q.includes("india") || q.includes("bharat")) {
         focusOnIndia();
         orbitaSpeak("Focusing orbital view on India sector. ISRO ground stations are active.");
     } else if (q.includes("iss") || q.includes("space station")) {
         selectPreset("ISS");
-        orbitaSpeak(`Tracking International Space Station. Currently flying over ${overheadText} at ${selectedSat.alt.toFixed(0)} kilometers.`);
-    } else if (q.includes("navic") || q.includes("irnss")) {
-        selectPreset("NAVIC");
-        orbitaSpeak(`Tracking ISRO NavIC navigation satellite over ${overheadText}.`);
+        orbitaSpeak(`Tracking International Space Station. Currently flying over ${overheadText}.`);
     } else if (q.includes("cartosat")) {
         selectPreset("CARTOSAT");
-        orbitaSpeak(`Tracking ISRO Cartosat-3 Earth observation satellite.`);
-    } else if (q.includes("oceansat") || q.includes("eos") || q.includes("insat")) {
-        selectPreset("INSAT");
-        orbitaSpeak(`Tracking ISRO EOS-06 Oceansat mission.`);
-    } else if (q.includes("view max") || q.includes("inspect") || q.includes("close")) {
+        orbitaSpeak("Tracking ISRO Cartosat-3 with 0.25 meter ultra-high-resolution land mapping camera.");
+    } else if (q.includes("resourcesat")) {
+        const s = satellites.find(x => x.name.includes("RESOURCESAT"));
+        if (s) selectSatellite(s);
+        orbitaSpeak("Tracking ISRO Resourcesat-2A land and crop mapping satellite.");
+    } else if (q.includes("risat")) {
+        const s = satellites.find(x => x.name.includes("RISAT"));
+        if (s) selectSatellite(s);
+        orbitaSpeak("Tracking ISRO RISAT-2B all-weather X-band radar imaging satellite.");
+    } else if (q.includes("insat")) {
+        const s = satellites.find(x => x.name.includes("INSAT-3DS"));
+        if (s) selectSatellite(s);
+        orbitaSpeak("Tracking ISRO INSAT-3DS meteorological weather satellite.");
+    } else if (q.includes("view max") || q.includes("inspect") || q.includes("picture") || q.includes("photo")) {
         toggleViewMax(true);
-        const p = getProfile(selectedSat);
-        orbitaSpeak(`Opening View Max for ${selectedSat.name}, overhead ${overheadText}. ${p.details}`);
+        const fb = getFallbackMeta(selectedSat);
+        orbitaSpeak(`Opening View Max and overhead sensor feed for ${selectedSat.name}. ${selectedSat.details || fb.details}`);
     } else if (q.includes("exit") || q.includes("normal") || q.includes("band")) {
         toggleViewMax(false);
         orbitaSpeak("Returning to full Earth view.");
     } else if (q.includes("where") || q.includes("country") || q.includes("kahan")) {
         orbitaSpeak(`${selectedSat.name} is currently overhead ${overheadText}, moving at ${selectedSat.vel.toFixed(2)} kilometers per second.`);
-    } else if (q.includes("what") || q.includes("detail") || q.includes("kya karta") || q.includes("about")) {
-        const p = getProfile(selectedSat);
-        orbitaSpeak(`${selectedSat.name} is operated by ${p.agency}. ${p.details}`);
+    } else if (q.includes("what") || q.includes("detail") || q.includes("kya karta")) {
+        const fb = getFallbackMeta(selectedSat);
+        orbitaSpeak(`${selectedSat.name} carries ${selectedSat.camera || fb.camera}. ${selectedSat.details || fb.details}`);
     } else if (q.includes("earthquake") || q.includes("quake")) {
         toggleQuakes(true);
         orbitaSpeak("Live global earthquake telemetry activated.");
@@ -522,7 +739,7 @@ function processVoiceQuery(raw) {
             selectSatellite(found);
             orbitaSpeak(`Locked onto ${found.name}, currently over ${overheadText}.`);
         } else {
-            orbitaSpeak(`You said ${raw}. Try saying Show all ISRO satellites, Where is ISS, India dikhao, or View Max.`);
+            orbitaSpeak(`Try saying Show weather satellites, Show land mapping satellites, Track Cartosat, or View Max.`);
         }
     }
 }
@@ -546,7 +763,7 @@ if (SpeechRec) {
         isListening = true;
         const b = document.getElementById("mic-pill-btn");
         b.classList.add("listening"); b.innerText = "Listening...";
-        document.getElementById("voice-subtitle").innerText = "Speak now (e.g. 'Show all ISRO satellites' or 'Where is ISS?')...";
+        document.getElementById("voice-subtitle").innerText = "Speak now (e.g. 'Show weather satellites' or 'Show land mapping')...";
     };
     recognition.onresult = e => processVoiceQuery(e.results[0][0].transcript);
     recognition.onerror = e => { document.getElementById("voice-subtitle").innerText = `Mic error (${e.error}). Click 💬 icon to type.`; };

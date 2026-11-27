@@ -1,0 +1,180 @@
+/* =========================================================
+   ORBITA — Mobile Layout Override (screens <= 768px)
+    before Desktop style.css stays 100% untouched in this
+   ========================================================= */
+
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+canvas {
+  touch-action: none;
+}
+
+/* 1. Compact Top Brand Pill (fits 1-2 clean lines on phone) */
+#top-pill {
+  top: 8px !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  max-width: calc(100vw - 16px) !important;
+  padding: 6px 10px !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  border-radius: 16px !important;
+}
+
+#brand-logo {
+  width: 22px !important;
+  height: 22px !important;
+  flex-shrink: 0;
+}
+
+#top-pill h1 {
+  font-size: 13px !important;
+  letter-spacing: 1px !important;
+  white-space: nowrap;
+}
+
+#top-pill .sep {
+  height: 16px !important;
+}
+
+#mini-status {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 2px 8px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+  overflow: hidden;
+}
+
+#clock {
+  display: none !important; /* Frees up space on narrow phone screens */
+}
+
+/* 2. Compact Left Icon Rail (stays above bottom sheet) */
+#icon-dock {
+  top: 62px !important;
+  left: 8px !important;
+  bottom: auto !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  border-radius: 16px !important;
+}
+
+.dock-btn {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 17px !important;
+  border-radius: 12px !important;
+}
+
+/* Hide hover tooltips on touch screens so they don't get stuck */
+.dock-btn::before,
+.dock-btn::after {
+  display: none !important;
+}
+
+/* 3. Bottom-Sheet Drawers (keeps top 55% 3D Earth always visible) */
+.clay-drawer {
+  top: auto !important;
+  bottom: 8px !important;
+  left: 8px !important;
+  right: 8px !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: 45vh !important;
+  padding: 10px 12px !important;
+  border-radius: 20px !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  z-index: 950 !important;
+}
+
+/* Compact Drawer Header */
+.drawer-head {
+  position: sticky;
+  top: -10px;
+  padding: 4px 0 8px 0 !important;
+  margin-bottom: 6px !important;
+  z-index: 2;
+}
+
+#sat-count-title {
+  font-size: 13px !important;
+}
+
+.close-x {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 14px !important;
+}
+
+/* Search Input (16px prevents iOS Safari auto-zoom) */
+#sat-search {
+  font-size: 14px !important;
+  padding: 7px 10px !important;
+  margin-bottom: 6px !important;
+}
+
+/* Single-Row Horizontal Scrollable Category Tabs */
+.filter-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  gap: 5px !important;
+  padding-bottom: 4px !important;
+  margin-bottom: 6px !important;
+  scrollbar-width: none;
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.cat-tab {
+  flex: 0 0 auto !important;
+  font-size: 10px !important;
+  padding: 5px 9px !important;
+  white-space: nowrap !important;
+}
+
+/* Compact Scrollable Satellite List */
+#sat-list-container,
+.sat-scroll {
+  max-height: 110px !important;
+  overflow-y: auto !important;
+  margin-bottom: 8px !important;
+}
+
+/* Compact 2-Column Telemetry Grid */
+.tele-box {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px 10px !important;
+  padding: 8px 10px !important;
+  font-size: 10px !important;
+  margin-bottom: 8px !important;
+}
+
+.tele-box > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Full-width Thumb-Friendly Action Button */
+#view-max-btn,
+.clay-action-btn {
+  width: 100% !important;
+  padding: 9px 12px !important;
+  font-size: 11px !important;
+  border-radius: 12px !important;
+}
